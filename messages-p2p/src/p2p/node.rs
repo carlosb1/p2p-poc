@@ -145,10 +145,16 @@ impl<H: MessageHandler> ClientNode<H>{
                             log::debug!("✅ Connected to: {peer_id}");
                         }
                         SwarmEvent::Behaviour(NodeBehaviourEvent::Gossipsub(gossipsub::Event::Message { propagation_source, message_id, message })) => {
+                            //propagation source is peer origin of the message
+                            log::debug!("📬 Received message from the forwarded {propagation_source} with id: {message_id}");
+                            log::debug!("📜 Message with topic {:?} and data: {:?}",
+                                &message.topic,
+                                String::from_utf8_lossy(&message.data.clone()));
+
                             let response_command = self.handler.handle_message(propagation_source,&message.data.clone());
                             //If has to handle the message with another message, you can send it
                             if let Some(command) = response_command {
-                                if let Err(er) = self.command_tx.send(command.clone()).await {
+                                if let Err(er) = self.command_tx.send(ChatCommand::Publish((&message.topic.clone()).to_string(), command)).await {
                                     log::error!("❌ Failed to send command: {er}");;
                                 }
                             } else {
