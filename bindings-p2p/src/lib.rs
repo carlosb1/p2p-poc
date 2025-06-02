@@ -5,9 +5,9 @@ use tokio::runtime::Runtime;
 use tokio::sync::mpsc;
 use uniffi::export;
 use messages_p2p::p2p::node::ClientNode;
-use messages_p2p::p2p::node::ChatCommand;
-use messages_p2p::p2p::handlers::MessageHandler;
+use messages_types::messages::ChatCommand;
 use messages_p2p::PeerId;
+use protocol_p2p::MessageHandler;
 
 #[cfg(target_os = "android")]
 pub fn init_logging() {
@@ -39,7 +39,7 @@ static NODE_TX: OnceLock<mpsc::Sender<ChatCommand>> = OnceLock::new();
 pub struct MyEventHandler;
 
 impl MessageHandler for MyEventHandler {
-    fn handle_message(&mut self, peer: PeerId, data: &[u8]) -> Option<ChatCommand>{
+    fn handle_message(&mut self, peer: PeerId, data: &[u8]) -> Option<Vec<u8>>{
         log::info!("Node: received message from {}: {:?}", peer.clone(),
             String::from_utf8_lossy(data.clone()));
         match LISTENER.get() {

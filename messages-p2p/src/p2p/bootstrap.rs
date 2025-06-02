@@ -69,17 +69,16 @@ impl BootstrapServer {
             keypair,
             peer_id,
             swarm,
-            listen_ons
+            listen_ons,
         })
     }
 
-    pub fn data_connection(&self) -> (String, Vec<String> ) {
+    pub fn data_connection(&self) -> (String, Vec<String>) {
         let peer_id_str = self.peer_id.to_string();
         let listen_ons = self.listen_ons.clone();
         (peer_id_str, listen_ons)
     }
-pub async fn run(&mut self) -> anyhow::Result<()> {
-
+    pub async fn run(&mut self) -> anyhow::Result<()> {
         /* setting up addresses */
         for addr in &self.listen_ons {
             self.swarm.listen_on(addr.parse()?)?;
@@ -101,13 +100,13 @@ pub async fn run(&mut self) -> anyhow::Result<()> {
                         "Server: Got message: '{}' with id: {id} from peer: {peer_id}",
                         String::from_utf8_lossy(&message.data),
                     );
-                },
+                }
 
                 SwarmEvent::Behaviour(BootstrapNodeBehaviourEvent::Kademlia(kad::Event::InboundRequest { request })) => {
                     println!("🔗 FIND NODE command detected");
                     println!("request={:?}", request);
-                },
-                SwarmEvent::Behaviour(BootstrapNodeBehaviourEvent::Kademlia(kad::Event::OutboundQueryProgressed { result, ..})) => {
+                }
+                SwarmEvent::Behaviour(BootstrapNodeBehaviourEvent::Kademlia(kad::Event::OutboundQueryProgressed { result, .. })) => {
                     match result {
                         kad::QueryResult::GetProviders(Ok(kad::GetProvidersOk::FoundProviders { key, providers, .. })) => {
                             for peer in providers {
@@ -116,7 +115,7 @@ pub async fn run(&mut self) -> anyhow::Result<()> {
                                     std::str::from_utf8(key.as_ref()).unwrap()
                                 );
                             }
-                        },
+                        }
                         _ => { println!("🔗 Other Kademlia event detected= {:?}", result); }
                     }
                 }

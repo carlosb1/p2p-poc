@@ -3,7 +3,7 @@ use rand::Rng;
 use tokio::task::JoinHandle;
 use messages_p2p::p2p;
 use messages_p2p::p2p::bootstrap::BootstrapServer;
-use messages_p2p::p2p::node::{ChatCommand};
+use messages_types::ChatCommand;
 
 pub fn generate_rand_msg() -> String {
     let mut rng = rand::rng();

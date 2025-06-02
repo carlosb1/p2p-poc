@@ -12,8 +12,8 @@ use tokio::{
     io::{self, AsyncBufReadExt, BufReader},
     signal,
 };
-use messages_p2p::p2p::handlers::SimpleClientHandler;
-use messages_p2p::p2p::node::{ChatCommand, ClientNode, run_node};
+use messages_p2p::p2p::node::{ClientNode, run_node};
+use messages_types::ChatCommand;
 
 pub fn generate_rand_msg() -> String {
     let mut rng = rand::rng();
@@ -86,21 +86,28 @@ pub async fn handle_command(command: &str, sender: &mpsc::Sender<ChatCommand>) -
     match parse_commands(command) {
         Ok((_, ChatCommand::Quit)) => {
             println!("Exiting...");
-            return true;
+            true
         }
         Ok((_, ChatCommand::Subscribe(channel))) => {
             println!("Subscribing to channel: {}", channel);
             let _ = sender.send(ChatCommand::Subscribe(channel)).await;
+            false
         }
         Ok((_, ChatCommand::Publish(channel, msg))) => {
             println!("Publishing to channel: {} with message: {}", channel, String::from_utf8_lossy(&msg));
             let _ = sender.send(ChatCommand::Publish(channel, msg)).await;
+            false
+        }
+        Ok((_, ChatCommand::SendOne(topic, msg))) => {
+            println!("Publishing to topic: {} with message: {}", topic, String::from_utf8_lossy(&msg));
+            let _ = sender.send(ChatCommand::SendOne(topic, msg)).await;
+            false
         }
         Err(e) => {
             eprintln!("Failed to parse command: {e}");
+            false
         }
     }
-    false
 }
 
 

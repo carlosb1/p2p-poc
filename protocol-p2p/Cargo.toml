@@ -4,6 +4,12 @@ version = "0.1.0"
 edition = "2024"
 
 [dependencies]
-serde = "1.0.219"
+serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0.140"
 sled = "0.34.7"
+tokio = { version = "1.45.0", features = ["sync", "time", "macros", "rt-multi-thread"] }
+libp2p = { version = "0.55.0" }
+messages-types = { path = "../messages-types" }
+anyhow = "1.0.98"
+log = "0.4.27"
+base64 = "0.22.1"
