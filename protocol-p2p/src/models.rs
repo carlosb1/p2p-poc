@@ -63,7 +63,7 @@ pub mod messages {
             signature: String,
         },
         ResultVote { id_votation: String, result: Vote },
-        IncludeNewValidatedContent { id_votation: String, content: String },
+        IncludeNewValidatedContent { id_votation: String, content: String, approved: bool },
 
     }
 

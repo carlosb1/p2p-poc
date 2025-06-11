@@ -41,7 +41,7 @@ pub struct SimpleClientHandler;
 
 // returns topic, and str message
 impl MessageHandler for SimpleClientHandler {
-    fn handle_message(&mut self, peer: PeerId, data: &[u8]) -> Option<Vec<u8>>{
+    fn handle_message(&mut self, peer: PeerId, data: &[u8], topic: &str) -> Option<Vec<u8>>{
         let str_message = String::from_utf8_lossy(data).to_string();
         if str_message.contains("hello world")  {
             log::debug!("Node: received hello world message from {}", peer);
@@ -193,7 +193,7 @@ impl<H: MessageHandler> ClientNode<H>{
                             match message.source {
                                 Some(source) => {
                                     log::debug!("📬 Message source: {source} with message_id={message_id}");
-                                    let response_command = self.handler.handle_message(source,&message.data.clone());
+                                    let response_command = self.handler.handle_message(source,&message.data.clone(), &message.topic.to_string());
                                     //If has to handle the message with another message, you can send it
                                     if let Some(command) = response_command {
                                         if let Err(er) = self.command_tx.send(ChatCommand::Publish((&message.topic.clone()).to_string(), command)).await {
