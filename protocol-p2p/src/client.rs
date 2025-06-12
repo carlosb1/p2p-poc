@@ -6,6 +6,7 @@ use libp2p::identity::Keypair;
 use libp2p::PeerId;
 use sled::Db;
 use tokio::sync::mpsc::Sender;
+use tokio::sync::Mutex;
 use tokio::time::sleep;
 
 use messages_types::ChatCommand;
@@ -17,10 +18,10 @@ use crate::protocol::MessageHandler;
 pub struct LinkClient {
     peer_id: PeerId,
     command_tx: Sender<ChatCommand>,
-    inner_handler: Arc<dyn MessageHandler + Send + Sync>,
+    pub inner_handler: Arc<Mutex<dyn MessageHandler + Send + Sync>>,
     db: Arc<Db>,
     keypair: Keypair,
-    content_to_evaluate: Vec<(String, String, String, Duration)>,
+    pub content_to_evaluate: Mutex<Vec<(String, String, String, Duration)>>,
 }
 
 impl LinkClient {
@@ -28,10 +29,10 @@ impl LinkClient {
         LinkClient {
             peer_id,
             command_tx: tx,
-            inner_handler: Arc::new(crate::handler::LinkHandler::new(peer_id.clone(), db.clone())),
+            inner_handler: Arc::new(Mutex::new(crate::handler::LinkHandler::new(peer_id.clone(), db.clone()))),
             db,
             keypair,
-            content_to_evaluate: Vec::new(),
+            content_to_evaluate: Mutex::new(Vec::new()),
         }
     }
     pub fn new_key_available(&self, topic: &str, content: &str) -> anyhow::Result<String> {
@@ -52,11 +53,12 @@ impl LinkClient {
             id_votation: key.to_string(),
             content: content.to_string(),
         };
+        self.add_validation_request(key.to_string(), topic.to_string(), content.to_string()).await;
         self.send(topic.to_string(), &message).await?;
         Ok(())
     }
-    pub fn add_validation_request(&mut self, key: String, topic: String, content: String) {
-        self.content_to_evaluate.push((key, topic, content, Duration::from_secs(TIMEOUT_SECS)));
+    pub async fn add_validation_request(&self, key: String, topic: String, content: String) {
+        self.content_to_evaluate.lock().await.push((key, topic, content, Duration::from_secs(TIMEOUT_SECS)));
     }
 
 
@@ -78,28 +80,29 @@ impl LinkClient {
         Ok(())
     }
 
-    pub async fn listen(&mut self) -> anyhow::Result<()> {
+    pub async fn wait_for_validators(&self) -> anyhow::Result<()> {
         let check_interval = Duration::from_millis(500);
         let start = tokio::time::Instant::now();
 
         loop {
-            if self.content_to_evaluate.is_empty() {
-                log::debug!("No content to evaluate, waiting for requests...");
+            log::info!("!!!!Listening for content to evaluate...");
+
+            let mut content_to_evaluate = self.content_to_evaluate.lock().await;
+
+            if content_to_evaluate.is_empty() {
+                log::info!("No content to evaluate, waiting for requests...");
             }
 
             let mut index = 0;
-            while index < self.content_to_evaluate.len() {
-                let req_to_validate = self.content_to_evaluate.get(index).ok_or(anyhow!("No request to validate at index {}", index))?;
+            while index < content_to_evaluate.len() {
+                let req_to_validate = content_to_evaluate.get(index).ok_or(anyhow!("No request to validate at index {}", index))?;
                 let (key, topic, content, timeout) = req_to_validate;
-                log::debug!("Checking content to evaluate: key={}, topic={}, content={}", key, topic, content);
+                log::info!("Checking content to evaluate: key={}, topic={}, content={}", key, topic, content);
                 if start.elapsed() >= *timeout {
-                    log::debug!("Timeout reached, stopping listen loop for topic:");
-                    /* remove element if it achieves the timeout */
-                    self.content_to_evaluate.remove(index);
-                    index += 1;
-                    return Ok(());
+                    content_to_evaluate.remove(index);
+                    //                    index+= 1; // increment index to check next content
+                    continue; // no incrementar índice si eliminamos
                 }
-
                 /* we want to receive all the possible voters, f32 is the reputation */
                 let mut filtered_votes: Vec<(String, f32)> = Vec::new();
                 for possible_voter_peer_id in db::get_voters(&self.db, &key, &topic).unwrap() {
@@ -114,12 +117,12 @@ impl LinkClient {
                         filtered_votes.push((possible_voter_peer_id, rep));
                     }
                 }
-                log::debug!("Filtered votes for key {}: {:?}", key, filtered_votes);
+                log::info!("Filtered votes for key {}: {:?}", key, filtered_votes);
                 if filtered_votes.len() >= MEMBERS_FOR_CONSENSUS {
-                    log::debug!("Enough votes collected for key {}: {:?}", key, filtered_votes);
+                    log::info!("Enough votes collected for key {}: {:?}", key, filtered_votes);
                     let filtered_votes: Vec<(String, f32)> = filtered_votes[0..MEMBERS_FOR_CONSENSUS].to_vec();
                     let leader_peer = filtered_votes.first().expect("No leader available");
-                    log::debug!("Selected leader for voting: {:?}", leader_peer);
+                    log::info!("Selected leader for voting: {:?}", leader_peer);
                     let vote_request = ContentMessage::new_vote_leader_request(
                         key.clone(),
                         content.to_string(),

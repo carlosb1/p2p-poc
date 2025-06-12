@@ -33,6 +33,7 @@ impl MessageHandler for LinkHandler {
                 }
                 ContentMessage::InterestedResponse { id_votation } => {
                     // interested voters
+                    log::info!("Received response for votation: {}", id_votation);
                     db::store_voter(&db, &id_votation, source_peer.to_string().as_str(), topic).ok()?; //convert result to option
                     // check if you have enough voters
                 }
@@ -45,6 +46,7 @@ impl MessageHandler for LinkHandler {
                     ttl_secs: _,
                     signature: _
                 } => {
+                    log::info!("Received VoteLeaderRequest for votation: {}", id_votation);
                     /* set up a new status vote, check if you are the leader or not */
                     let my_self_str_peer_id = self.peer_id.to_string();
                     let mut votation = Votation::new(
@@ -62,6 +64,8 @@ impl MessageHandler for LinkHandler {
                     db::insert_and_update_status_vote(&db, id_votation.as_str(), &votation).ok()?;
                 }
                 ContentMessage::ResultVote { id_votation, result } => {
+                    log::info!("Received ResultVote for votation: {}", id_votation);
+
                     // we receive a vote result
 
                     /* are you in the votation process */
@@ -119,6 +123,7 @@ impl MessageHandler for LinkHandler {
                     return Some(serde_json::to_string(&data).ok()?.into_bytes());
                 }
                 ContentMessage::IncludeNewValidatedContent { id_votation, content, approved } => {
+                    log::info!("Received IncludeNewValidatedContent for votation: {}", id_votation);
                     let data_content = DataContent::new(id_votation, content, approved);
                     db::include_new_validated_content(&db, &data_content).ok()?;
                 }

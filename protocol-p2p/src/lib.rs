@@ -6,7 +6,6 @@ pub mod handler;
 pub mod client;
 
 pub mod db;
-pub mod services;
 
 const DEFAULT_REPUTATION: f32 = 90.0;
 
