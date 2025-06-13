@@ -11,10 +11,12 @@ use tokio::task::JoinHandle;
 
 use messages_types::ChatCommand;
 use protocol_p2p::client::LinkClient;
+use protocol_p2p::db::update_reputations;
 use protocol_p2p::models::messages::ContentMessage;
+use protocol_p2p::models::messages::Vote;
+use protocol_p2p::protocol::MessageHandler;
 
 use crate::db::init_db;
-use crate::protocol::MessageHandler;
 
 mod db;
 mod models;
@@ -93,32 +95,38 @@ async fn main() {
         server_clone.run().await;
     });
 
-
-    // let mut handlers: Vec<JoinHandle<()>> = Vec::new();
+    let mut clients: Vec<Arc<LinkClient>> = Vec::new();
+    let mut created_peer_ids = Vec::new();
 
     // Set up 6 clients
+    let mut db_peers = Vec::new();
     for i in 0..6 {
         let cmd_cloned_tx = cmd_tx.clone();
         let server_clone = server.clone();
-        let _ = tokio::task::spawn(async move {
-            let keypair = identity::Keypair::generate_ed25519();
-            let peer_id = keypair.public().to_peer_id();
-            let (tx, mut rx) = mpsc::channel(32);
-            let db = Arc::new(init_db(&format!("peer_{i}")).unwrap());
 
+        let keypair = identity::Keypair::generate_ed25519();
+        let peer_id = keypair.public().to_peer_id();
+        let db = Arc::new(init_db(&format!("peer_{i}")).unwrap());
+        db_peers.push(db.clone());
+        let mut client = Arc::new(LinkClient::new(peer_id.clone(), cmd_cloned_tx, db.clone(), keypair.clone()));
+
+
+        clients.push(client.clone());
+        created_peer_ids.push(peer_id.clone());
+
+
+        let _ = tokio::task::spawn(async move {
+            let (tx, mut rx) = mpsc::channel(32);
             // the tricky part, client use tx from server and server the other tx to send to the client
             // Register client receiver as a subscriber
             server_clone.subscribe(topic, tx).await;
-
-            let mut client = Arc::new(LinkClient::new(peer_id.clone(), cmd_cloned_tx, db.clone(), keypair.clone()));
             client.register_topic(topic).await.unwrap();
-
             let handler = client.inner_handler.clone();
-            let t_peer_id = peer_id.clone();
+            let t_peer_id = client.peer_id().clone();
             log::info!("{:?} - Waiting for a new message", t_peer_id);
             while let Some(message) = rx.recv().await {
                 log::info!("Client {} received message: {:?}", t_peer_id.clone(), String::from_utf8_lossy(&message));
-                if let Ok(content_message) = serde_json::from_slice::<protocol_p2p::models::messages::ContentMessage>(&message) {
+                if let Ok(content_message) = serde_json::from_slice::<ContentMessage>(&message) {
                     let response = handler.lock().await.handle_message(t_peer_id, &message, topic);
                     if let Some(response_message) = response {
                         client.send(topic.to_string(), &serde_json::from_slice::<ContentMessage>(&response_message).unwrap()).await.expect("Failed to send message");
@@ -139,6 +147,7 @@ async fn main() {
 
     log::info!("Myself peer ID: {}", peer_id.to_string());
     let myself = Arc::new(LinkClient::new(peer_id.clone(), cmd_tx.clone(), db.clone(), keypair.clone()));
+    //created_peer_ids.push(peer_id.clone());
 
     // the tricky part, client use tx from server and server the other tx to send to the client
     // Register client receiver as a subscriber
@@ -155,14 +164,14 @@ async fn main() {
     /* running my handler */
     let mut cloned_myself = myself.clone();
     let listen = tokio::task::spawn(async move {
-        let mut mocked_peer_ids = Vec::new();
+        //        let mut mocked_peer_ids = Vec::new();
         while let Some(message) = my_rx.recv().await {
             log::info!("Client received message: {:?}",String::from_utf8_lossy(&message));
             if let Ok(content_message) = serde_json::from_slice::<ContentMessage>(&message) {
-                let keypair = identity::Keypair::generate_ed25519();
-                let peer_id = keypair.public().to_peer_id();
-                mocked_peer_ids.push(peer_id.clone());
-                cloned_myself.inner_handler.lock().await.handle_message(peer_id, &message, topic);
+                //get back the peer id from clients to resend the message
+                if let Some(peer_id) = created_peer_ids.pop() {
+                    cloned_myself.inner_handler.lock().await.handle_message(peer_id, &message, topic);
+                }
             } else {
                 log::warn!("Received invalid message format");
             }
@@ -170,7 +179,53 @@ async fn main() {
     });
     let key = myself.new_key_available(topic, content).expect("Failed to create key for voting");
     log::info!("Myself asking for validation");
-    myself.ask_validation(&key, topic, content).await.expect("Failed to ask for validation");
+    myself.ask_validation(&key.clone(), topic, content).await.expect("Failed to ask for validation");
     log::info!("Waiting for all clients to initialize and listen...");
     tokio::time::sleep(tokio::time::Duration::from_secs(10)).await;
+    log::info!("--------------------------------------------------------------------");
+    log::info!("All clients initialized, starting voting process...");
+
+    for client in clients {
+        log::info!("-> Client {} is voting for key: {:?} and topic: {:?}", client.peer_id(), key, topic);
+        client.add_vote(&key, &topic, Vote::Yes).await.unwrap()
+    }
+
+    tokio::time::sleep(tokio::time::Duration::from_secs(10)).await;
+    log::info!("--------------------------------------------------------------------");
+    println!("List status for each client for key={:?} and topic={:?}", key.clone(), topic.clone());
+
+    let myself_db = myself.db();
+    let voters = db::get_voters(&myself_db, &key.clone(), topic).expect("Failed to get voters");
+
+    assert!(voters.len() > 0, "No voters found for the key");
+    for voter in voters {
+        println!("Voter: {}", voter);
+    }
+
+    let reputations = db::get_reputations(&myself_db, topic);
+    for reputation in reputations.iter() {
+        println!("Reputation: {:?}", reputation);
+    }
+    assert!(reputations.len() > 0, "No voters found for the key");
+
+    for content in db::get_contents(&myself_db) {
+        println!("Validated content: {:?}", content);
+    }
+
+
+    for db in db_peers {
+        println!("Validating contents in peer database...");
+        for content in db::get_contents(&db) {
+            println!("Validated content: {:?}", content);
+        }
+    }
+
+
+    std::fs::remove_dir_all("myself_peer").unwrap();
+    std::fs::remove_dir_all("peer_0").unwrap();
+    std::fs::remove_dir_all("peer_1").unwrap();
+    std::fs::remove_dir_all("peer_2").unwrap();
+    std::fs::remove_dir_all("peer_3").unwrap();
+    std::fs::remove_dir_all("peer_4").unwrap();
+    std::fs::remove_dir_all("peer_5").unwrap();
 }

@@ -74,6 +74,7 @@ impl MessageHandler for LinkHandler {
                     };
 
                     /* are you the leader?  */
+                    log::info!("leader_id={:?}, my_self_str_peer_id={:?}", votation.leader_id, self.peer_id.to_string());
                     if votation.leader_id != self.peer_id.to_string() {
                         return None;
                     }

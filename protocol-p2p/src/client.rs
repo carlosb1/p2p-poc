@@ -7,12 +7,13 @@ use libp2p::PeerId;
 use sled::Db;
 use tokio::sync::mpsc::Sender;
 use tokio::sync::Mutex;
+use tokio::task::id;
 use tokio::time::sleep;
 
 use messages_types::ChatCommand;
 
 use crate::{db, DEFAULT_REPUTATION, MEMBERS_FOR_CONSENSUS, MIN_REPUTATION_THRESHOLD, TIMEOUT_SECS};
-use crate::models::messages::ContentMessage;
+use crate::models::messages::{ContentMessage, Vote};
 use crate::protocol::MessageHandler;
 
 pub struct LinkClient {
@@ -42,7 +43,7 @@ impl LinkClient {
         let is_added = self.db.scan_prefix(key_for_checking.clone()).next().is_some();
         if is_added {
             log::info!("Content already added: {}", content);
-            return Err(anyhow!("Cnotent already added: {}", content));
+            return Err(anyhow!("Content already added: {}", content));
         }
         let key = db::create_key_for_voting_db(content, topic, "pending", 1);
         return Ok(key);
@@ -57,7 +58,7 @@ impl LinkClient {
         self.send(topic.to_string(), &message).await?;
         Ok(())
     }
-    pub async fn add_validation_request(&self, key: String, topic: String, content: String) {
+    async fn add_validation_request(&self, key: String, topic: String, content: String) {
         self.content_to_evaluate.lock().await.push((key, topic, content, Duration::from_secs(TIMEOUT_SECS)));
     }
 
@@ -75,10 +76,19 @@ impl LinkClient {
         Ok(())
     }
 
+    pub async fn add_vote(&self, id_votation: &str, topic: &str, vote: Vote) -> anyhow::Result<()> {
+        self.command_tx.send(ChatCommand::Publish(
+            topic.to_string(),
+            serde_json::to_vec(&ContentMessage::ResultVote { id_votation: id_votation.to_string(), result: vote })?,
+        )).await.map_err(|e| anyhow!("Failed to send vote: {}", e))?;
+        Ok(())
+    }
+
     pub async fn send(&self, topic: String, message: &ContentMessage) -> anyhow::Result<()> {
         self.command_tx.send(ChatCommand::Publish(topic, serde_json::to_vec(message)?)).await?;
         Ok(())
     }
+
 
     pub async fn wait_for_validators(&self) -> anyhow::Result<()> {
         let check_interval = Duration::from_millis(500);
