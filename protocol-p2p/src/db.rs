@@ -98,7 +98,7 @@ pub fn set_reputation(db: &sled::Db, topic: &str, peer_id: &str, reputation: f32
     Ok(())
 }
 
-pub(crate) fn get_reputations(db: &sled::Db, topic: &str) -> Vec<(String, f32)> {
+pub fn get_reputations(db: &sled::Db, topic: &str) -> Vec<(String, f32)> {
     let results: Vec<(String, f32)> = db.scan_prefix(format!("election/{topic}/reputation")).map(|item| {
         if let Ok((key, value)) = item {
             if let Ok(reputation) = serde_json::from_slice::<f32>(&value) {
