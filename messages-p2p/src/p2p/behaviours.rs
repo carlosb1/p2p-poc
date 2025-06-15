@@ -1,7 +1,7 @@
 use libp2p::identity::Keypair;
 use libp2p::kad::store::MemoryStore;
 use libp2p::kad::Behaviour;
-use libp2p::{gossipsub, relay, request_response};
+use libp2p::{gossipsub, identify, relay, request_response};
 use std::hash::{DefaultHasher, Hash, Hasher};
 use std::io;
 use std::time::Duration;
@@ -64,4 +64,11 @@ pub fn build_request_response_behaviour() -> JsonBehaviour<OneToOneRequest, OneT
 
 pub fn build_relay_behaviour(key: &Keypair) -> relay::Behaviour {
     relay::Behaviour::new(key.public().to_peer_id(), Default::default())
+}
+
+pub fn build_identify_behaviour(key: &Keypair) -> identify::Behaviour {
+    identify::Behaviour::new(identify::Config::new(
+        "/ipfs/id/1.0.0".to_string(),
+        key.public(),
+    ))
 }

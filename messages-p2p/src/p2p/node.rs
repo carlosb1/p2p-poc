@@ -1,11 +1,10 @@
 use crate::p2p::behaviours::{
-    build_gossipsub_behaviour, build_kademlia_behaviour, build_relay_behaviour,
+    build_gossipsub_behaviour, build_identify_behaviour, build_kademlia_behaviour,
     build_request_response_behaviour,
 };
 use crate::p2p::behaviours::{OneToOneRequest, OneToOneResponse};
 use crate::p2p::config::{load_config, print_config, Config, DEFAULT_TOPIC};
 use futures::StreamExt;
-use libp2p::relay;
 use libp2p::request_response::json::Behaviour as JsonBehaviour;
 use libp2p::{
     gossipsub::{self, IdentTopic as Topic}, identity,
@@ -16,6 +15,7 @@ use libp2p::{
     yamux,
     Multiaddr, PeerId,
 };
+use libp2p::{identify, relay};
 use messages_types::ChatCommand;
 use protocol_p2p::MessageHandler;
 use rand::Rng;
@@ -29,8 +29,9 @@ const BUFFER_SIZE: usize = 32;
 pub struct NodeBehaviour {
     pub kademlia: kad::Behaviour<MemoryStore>,
     pub gossip_sub: gossipsub::Behaviour,
-    pub request_response: JsonBehaviour<OneToOneRequest, OneToOneResponse>,
-    pub relay: relay::Behaviour,
+    pub request_response: JsonBehaviour<OneToOneRequest, OneToOneResponse>, //TODO is working?
+    pub relay: relay::client::Behaviour,
+    pub identify: identify::Behaviour,
 }
 
 pub struct ClientNode<H: MessageHandler> {
@@ -100,12 +101,15 @@ impl<H: MessageHandler> ClientNode<H> {
         let mut gossipsub = build_gossipsub_behaviour(&client_keypair)?;
         gossipsub.subscribe(&DEFAULT_TOPIC)?;
 
-        let behaviour = |key: &identity::Keypair| {
+        //let (relay_transport, relay_behaviour) = relay::new_transport_and_behaviour(client_peer_id.clone(), Default::default());
+
+        let behaviour = |key: &identity::Keypair, relay_behaviour| {
             Ok(NodeBehaviour {
                 kademlia: build_kademlia_behaviour(key),
                 gossip_sub: gossipsub,
                 request_response: build_request_response_behaviour(),
-                relay: build_relay_behaviour(key),
+                relay: relay_behaviour,
+                identify: build_identify_behaviour(key),
             })
         };
 
@@ -116,6 +120,7 @@ impl<H: MessageHandler> ClientNode<H> {
                 noise::Config::new,
                 yamux::Config::default,
             )?
+            .with_relay_client(noise::Config::new, yamux::Config::default)?
             .with_behaviour(behaviour)?
             .build();
 
@@ -124,6 +129,12 @@ impl<H: MessageHandler> ClientNode<H> {
             .kademlia
             .add_address(&server_peer_id, server_addr.clone());
         swarm.dial(server_addr.clone())?;
+        let relay_reservation_addr = server_addr
+            .clone()
+            .with(libp2p::core::multiaddr::Protocol::P2pCircuit);
+        log::info!("🚀 Dialing relay reservation: {}", relay_reservation_addr);
+        swarm.dial(relay_reservation_addr)?;
+
         swarm.behaviour_mut().kademlia.bootstrap()?;
 
         let (tx, rx) = mpsc::channel::<ChatCommand>(BUFFER_SIZE); // save tx if needed outside
@@ -192,6 +203,20 @@ impl<H: MessageHandler> ClientNode<H> {
                         }
                         SwarmEvent::ConnectionEstablished { peer_id, .. } => {
                             log::debug!("✅ Connected to: {peer_id}");
+                        }
+                        SwarmEvent::Behaviour(NodeBehaviourEvent::Relay(event)) => {
+                            log::debug!("<UNK> Relay event: {event:?}");
+                            for addr in self.swarm.external_addresses() {
+                                if addr.to_string().contains("p2p-circuit") {
+                                    log::debug!("✅ Reachable via relay: {addr}");
+                                }
+                            }
+                        }
+                        SwarmEvent::Behaviour(NodeBehaviourEvent::Identify( identify::Event::Received {
+                            info:identify::Info{observed_addr, ..}, ..},
+                        )) => {
+                            log::debug!("<UNK> Identifying from: {observed_addr}");
+                            self.swarm.add_external_address(observed_addr.clone());
                         }
                         SwarmEvent::Behaviour(NodeBehaviourEvent::GossipSub(gossipsub::Event::Message { propagation_source, message_id, message })) => {
                             //propagation source is peer origin of the message

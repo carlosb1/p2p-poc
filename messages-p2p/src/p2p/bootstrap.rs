@@ -1,4 +1,7 @@
-use crate::p2p::behaviours::{build_gossipsub_behaviour, build_kademlia_behaviour};
+use crate::p2p::behaviours::{
+    build_gossipsub_behaviour, build_identify_behaviour, build_kademlia_behaviour,
+    build_relay_behaviour,
+};
 use crate::p2p::config;
 use crate::p2p::config::save_config;
 use axum::response::sse::KeepAlive;
@@ -6,13 +9,14 @@ use futures::StreamExt;
 use libp2p::identity::Keypair;
 use libp2p::kad::store::MemoryStore;
 use libp2p::swarm::{NetworkBehaviour, SwarmEvent};
-use libp2p::{gossipsub, identity, kad, noise, tcp, yamux, PeerId, Swarm};
-use once_cell::sync::Lazy;
+use libp2p::{gossipsub, identify, identity, kad, noise, relay, tcp, yamux, PeerId, Swarm};
 
 #[derive(NetworkBehaviour)]
 struct BootstrapNodeBehaviour {
     kademlia: kad::Behaviour<MemoryStore>,
     gossipsub: gossipsub::Behaviour,
+    relay: relay::Behaviour,
+    identify: identify::Behaviour,
 }
 
 pub struct BootstrapServer {
@@ -36,6 +40,8 @@ impl BootstrapServer {
             BootstrapNodeBehaviour {
                 kademlia: build_kademlia_behaviour(key),
                 gossipsub,
+                relay: build_relay_behaviour(key),
+                identify: build_identify_behaviour(key),
             }
         };
 
@@ -73,6 +79,23 @@ impl BootstrapServer {
                 SwarmEvent::NewListenAddr { address, .. } => {
                     println!("Listening on {address:?} and saving server config");
                     save_config(&self.peer_id, address)?;
+                }
+                SwarmEvent::Behaviour(BootstrapNodeBehaviourEvent::Relay(event)) => {
+                    log::debug!("<UNK> Relay event: {event:?}");
+                    for addr in self.swarm.external_addresses() {
+                        if addr.to_string().contains("p2p-circuit") {
+                            log::debug!("✅ Reachable via relay: {addr}");
+                        }
+                    }
+                }
+                SwarmEvent::Behaviour(BootstrapNodeBehaviourEvent::Identify(
+                    identify::Event::Received {
+                        info: identify::Info { observed_addr, .. },
+                        ..
+                    },
+                )) => {
+                    log::debug!("<UNK> Identifying from: {observed_addr}");
+                    self.swarm.add_external_address(observed_addr.clone());
                 }
                 /* event for messages */
                 SwarmEvent::Behaviour(BootstrapNodeBehaviourEvent::Gossipsub(

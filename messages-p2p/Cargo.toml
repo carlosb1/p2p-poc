@@ -10,7 +10,7 @@ crate-type = ["rlib", "cdylib"]  # support both Rust-native and JNI .so
 
 
 [dependencies]
-libp2p = { version="0.55.0", features = [ "tokio", "dns", "kad", "mdns", "noise", "macros", "tcp", "yamux", "gossipsub", "request-response", "json", "relay"] }
+libp2p = { version = "0.55.0", features = ["tokio", "dns", "kad", "mdns", "noise", "macros", "tcp", "yamux", "gossipsub", "request-response", "json", "relay", "identify"] }
 protocol-p2p = { path = "../protocol-p2p" }
 messages-types = { path = "../messages-types" }
 toml = "0.8.22"
@@ -18,7 +18,7 @@ serde = { version = "1.0.219", features = ["derive"] }
 
 tracing-subscriber = { version = "0.3.19", features = ["env-filter"] }
 futures = "0.3.31"
-tokio = { version="1.45.0", features=["full"] }
+tokio = { version = "1.45.0", features = ["full"] }
 anyhow = "1.0.98"
 once_cell = "1.21.3"
 nom = "8.0.0"
