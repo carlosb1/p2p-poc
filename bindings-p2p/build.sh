@@ -18,6 +18,6 @@ cargo run --bin uniffi-bindgen generate src/bindings_p2p.udl \
     --out-dir ../android-app/app/src/main/java
 
 # Step 3: Copy the generated files to the correct location
-cp ../android-app/app/src/main/jniLibs/x86_64/libbindings_p2p.so ../android-app/app/src/main/jniLibs/x86_64/libuniffi_bindings_p2p.so
+#cp ../android-app/app/src/main/jniLibs/x86_64/libbindings_p2p.so ../android-app/app/src/main/jniLibs/x86_64/libuniffi_bindings_p2p.so
 cp ../messages-p2p/temp_config.toml .
 cp ../messages-p2p/temp_config.toml ../android-app/app/src/main/assets/config.toml

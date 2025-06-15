@@ -1,0 +1,19 @@
+# === Rust build artifacts ===
+target/
+**/target/
+
+# === Git ===
+.git
+.gitignore
+
+# === Dependency lockfile (optional, if you want reproducible builds) ===
+# !Cargo.lock   # Uncomment if you want to include Cargo.lock
+
+# === IDEs and editors ===
+**/.idea/
+**/.vscode/
+**/.DS_Store
+
+.aws
+
+# === OS

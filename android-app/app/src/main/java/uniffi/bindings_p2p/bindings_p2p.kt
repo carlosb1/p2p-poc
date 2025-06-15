@@ -59,7 +59,7 @@ open class RustBuffer : Structure() {
     companion object {
         internal fun alloc(size: ULong = 0UL) = uniffiRustCall() { status ->
             // Note: need to convert the size to a `Long` value to make this work with JVM.
-            UniffiLib.INSTANCE.ffi_bindings_p2p_rustbuffer_alloc(size.toLong(), status)
+            UniffiLib.INSTANCE.ffi_uniffi_bindings_p2p_rustbuffer_alloc(size.toLong(), status)
         }.also {
             if(it.data == null) {
                throw RuntimeException("RustBuffer.alloc() returned null data pointer (size=${size})")
@@ -75,7 +75,7 @@ open class RustBuffer : Structure() {
         }
 
         internal fun free(buf: RustBuffer.ByValue) = uniffiRustCall() { status ->
-            UniffiLib.INSTANCE.ffi_bindings_p2p_rustbuffer_free(buf, status)
+            UniffiLib.INSTANCE.ffi_uniffi_bindings_p2p_rustbuffer_free(buf, status)
         }
     }
 
@@ -757,15 +757,15 @@ internal open class UniffiVTableCallbackInterfaceEventListener(
 // when the library is loaded.
 internal interface IntegrityCheckingUniffiLib : Library {
     // Integrity check functions only
-    fun uniffi_bindings_p2p_checksum_func_send_message(
+    fun uniffi_uniffi_bindings_p2p_checksum_func_raw_message(
 ): Short
-fun uniffi_bindings_p2p_checksum_func_set_listener(
+fun uniffi_uniffi_bindings_p2p_checksum_func_set_listener(
 ): Short
-fun uniffi_bindings_p2p_checksum_func_start(
+fun uniffi_uniffi_bindings_p2p_checksum_func_start(
 ): Short
-fun uniffi_bindings_p2p_checksum_method_eventlistener_on_event(
+fun uniffi_uniffi_bindings_p2p_checksum_method_eventlistener_on_event(
 ): Short
-fun ffi_bindings_p2p_uniffi_contract_version(
+fun ffi_uniffi_bindings_p2p_uniffi_contract_version(
 ): Int
 
 }
@@ -815,131 +815,131 @@ internal interface UniffiLib : Library {
     }
 
     // FFI functions
-    fun uniffi_bindings_p2p_fn_clone_eventlistener(`ptr`: Pointer,uniffi_out_err: UniffiRustCallStatus, 
+    fun uniffi_uniffi_bindings_p2p_fn_clone_eventlistener(`ptr`: Pointer,uniffi_out_err: UniffiRustCallStatus, 
 ): Pointer
-fun uniffi_bindings_p2p_fn_free_eventlistener(`ptr`: Pointer,uniffi_out_err: UniffiRustCallStatus, 
+fun uniffi_uniffi_bindings_p2p_fn_free_eventlistener(`ptr`: Pointer,uniffi_out_err: UniffiRustCallStatus, 
 ): Unit
-fun uniffi_bindings_p2p_fn_init_callback_vtable_eventlistener(`vtable`: UniffiVTableCallbackInterfaceEventListener,
+fun uniffi_uniffi_bindings_p2p_fn_init_callback_vtable_eventlistener(`vtable`: UniffiVTableCallbackInterfaceEventListener,
 ): Unit
-fun uniffi_bindings_p2p_fn_method_eventlistener_on_event(`ptr`: Pointer,`event`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+fun uniffi_uniffi_bindings_p2p_fn_method_eventlistener_on_event(`ptr`: Pointer,`event`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
 ): RustBuffer.ByValue
-fun uniffi_bindings_p2p_fn_func_send_message(`topic`: RustBuffer.ByValue,`message`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+fun uniffi_uniffi_bindings_p2p_fn_func_raw_message(`topic`: RustBuffer.ByValue,`message`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
 ): Unit
-fun uniffi_bindings_p2p_fn_func_set_listener(`listener`: Pointer,uniffi_out_err: UniffiRustCallStatus, 
+fun uniffi_uniffi_bindings_p2p_fn_func_set_listener(`listener`: Pointer,uniffi_out_err: UniffiRustCallStatus, 
 ): Unit
-fun uniffi_bindings_p2p_fn_func_start(`serverAddress`: RustBuffer.ByValue,`peerId`: RustBuffer.ByValue,`username`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+fun uniffi_uniffi_bindings_p2p_fn_func_start(`serverAddress`: RustBuffer.ByValue,`peerId`: RustBuffer.ByValue,`username`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
 ): Unit
-fun ffi_bindings_p2p_rustbuffer_alloc(`size`: Long,uniffi_out_err: UniffiRustCallStatus, 
+fun ffi_uniffi_bindings_p2p_rustbuffer_alloc(`size`: Long,uniffi_out_err: UniffiRustCallStatus, 
 ): RustBuffer.ByValue
-fun ffi_bindings_p2p_rustbuffer_from_bytes(`bytes`: ForeignBytes.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+fun ffi_uniffi_bindings_p2p_rustbuffer_from_bytes(`bytes`: ForeignBytes.ByValue,uniffi_out_err: UniffiRustCallStatus, 
 ): RustBuffer.ByValue
-fun ffi_bindings_p2p_rustbuffer_free(`buf`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+fun ffi_uniffi_bindings_p2p_rustbuffer_free(`buf`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
 ): Unit
-fun ffi_bindings_p2p_rustbuffer_reserve(`buf`: RustBuffer.ByValue,`additional`: Long,uniffi_out_err: UniffiRustCallStatus, 
+fun ffi_uniffi_bindings_p2p_rustbuffer_reserve(`buf`: RustBuffer.ByValue,`additional`: Long,uniffi_out_err: UniffiRustCallStatus, 
 ): RustBuffer.ByValue
-fun ffi_bindings_p2p_rust_future_poll_u8(`handle`: Long,`callback`: UniffiRustFutureContinuationCallback,`callbackData`: Long,
+fun ffi_uniffi_bindings_p2p_rust_future_poll_u8(`handle`: Long,`callback`: UniffiRustFutureContinuationCallback,`callbackData`: Long,
 ): Unit
-fun ffi_bindings_p2p_rust_future_cancel_u8(`handle`: Long,
+fun ffi_uniffi_bindings_p2p_rust_future_cancel_u8(`handle`: Long,
 ): Unit
-fun ffi_bindings_p2p_rust_future_free_u8(`handle`: Long,
+fun ffi_uniffi_bindings_p2p_rust_future_free_u8(`handle`: Long,
 ): Unit
-fun ffi_bindings_p2p_rust_future_complete_u8(`handle`: Long,uniffi_out_err: UniffiRustCallStatus, 
+fun ffi_uniffi_bindings_p2p_rust_future_complete_u8(`handle`: Long,uniffi_out_err: UniffiRustCallStatus, 
 ): Byte
-fun ffi_bindings_p2p_rust_future_poll_i8(`handle`: Long,`callback`: UniffiRustFutureContinuationCallback,`callbackData`: Long,
+fun ffi_uniffi_bindings_p2p_rust_future_poll_i8(`handle`: Long,`callback`: UniffiRustFutureContinuationCallback,`callbackData`: Long,
 ): Unit
-fun ffi_bindings_p2p_rust_future_cancel_i8(`handle`: Long,
+fun ffi_uniffi_bindings_p2p_rust_future_cancel_i8(`handle`: Long,
 ): Unit
-fun ffi_bindings_p2p_rust_future_free_i8(`handle`: Long,
+fun ffi_uniffi_bindings_p2p_rust_future_free_i8(`handle`: Long,
 ): Unit
-fun ffi_bindings_p2p_rust_future_complete_i8(`handle`: Long,uniffi_out_err: UniffiRustCallStatus, 
+fun ffi_uniffi_bindings_p2p_rust_future_complete_i8(`handle`: Long,uniffi_out_err: UniffiRustCallStatus, 
 ): Byte
-fun ffi_bindings_p2p_rust_future_poll_u16(`handle`: Long,`callback`: UniffiRustFutureContinuationCallback,`callbackData`: Long,
+fun ffi_uniffi_bindings_p2p_rust_future_poll_u16(`handle`: Long,`callback`: UniffiRustFutureContinuationCallback,`callbackData`: Long,
 ): Unit
-fun ffi_bindings_p2p_rust_future_cancel_u16(`handle`: Long,
+fun ffi_uniffi_bindings_p2p_rust_future_cancel_u16(`handle`: Long,
 ): Unit
-fun ffi_bindings_p2p_rust_future_free_u16(`handle`: Long,
+fun ffi_uniffi_bindings_p2p_rust_future_free_u16(`handle`: Long,
 ): Unit
-fun ffi_bindings_p2p_rust_future_complete_u16(`handle`: Long,uniffi_out_err: UniffiRustCallStatus, 
+fun ffi_uniffi_bindings_p2p_rust_future_complete_u16(`handle`: Long,uniffi_out_err: UniffiRustCallStatus, 
 ): Short
-fun ffi_bindings_p2p_rust_future_poll_i16(`handle`: Long,`callback`: UniffiRustFutureContinuationCallback,`callbackData`: Long,
+fun ffi_uniffi_bindings_p2p_rust_future_poll_i16(`handle`: Long,`callback`: UniffiRustFutureContinuationCallback,`callbackData`: Long,
 ): Unit
-fun ffi_bindings_p2p_rust_future_cancel_i16(`handle`: Long,
+fun ffi_uniffi_bindings_p2p_rust_future_cancel_i16(`handle`: Long,
 ): Unit
-fun ffi_bindings_p2p_rust_future_free_i16(`handle`: Long,
+fun ffi_uniffi_bindings_p2p_rust_future_free_i16(`handle`: Long,
 ): Unit
-fun ffi_bindings_p2p_rust_future_complete_i16(`handle`: Long,uniffi_out_err: UniffiRustCallStatus, 
+fun ffi_uniffi_bindings_p2p_rust_future_complete_i16(`handle`: Long,uniffi_out_err: UniffiRustCallStatus, 
 ): Short
-fun ffi_bindings_p2p_rust_future_poll_u32(`handle`: Long,`callback`: UniffiRustFutureContinuationCallback,`callbackData`: Long,
+fun ffi_uniffi_bindings_p2p_rust_future_poll_u32(`handle`: Long,`callback`: UniffiRustFutureContinuationCallback,`callbackData`: Long,
 ): Unit
-fun ffi_bindings_p2p_rust_future_cancel_u32(`handle`: Long,
+fun ffi_uniffi_bindings_p2p_rust_future_cancel_u32(`handle`: Long,
 ): Unit
-fun ffi_bindings_p2p_rust_future_free_u32(`handle`: Long,
+fun ffi_uniffi_bindings_p2p_rust_future_free_u32(`handle`: Long,
 ): Unit
-fun ffi_bindings_p2p_rust_future_complete_u32(`handle`: Long,uniffi_out_err: UniffiRustCallStatus, 
+fun ffi_uniffi_bindings_p2p_rust_future_complete_u32(`handle`: Long,uniffi_out_err: UniffiRustCallStatus, 
 ): Int
-fun ffi_bindings_p2p_rust_future_poll_i32(`handle`: Long,`callback`: UniffiRustFutureContinuationCallback,`callbackData`: Long,
+fun ffi_uniffi_bindings_p2p_rust_future_poll_i32(`handle`: Long,`callback`: UniffiRustFutureContinuationCallback,`callbackData`: Long,
 ): Unit
-fun ffi_bindings_p2p_rust_future_cancel_i32(`handle`: Long,
+fun ffi_uniffi_bindings_p2p_rust_future_cancel_i32(`handle`: Long,
 ): Unit
-fun ffi_bindings_p2p_rust_future_free_i32(`handle`: Long,
+fun ffi_uniffi_bindings_p2p_rust_future_free_i32(`handle`: Long,
 ): Unit
-fun ffi_bindings_p2p_rust_future_complete_i32(`handle`: Long,uniffi_out_err: UniffiRustCallStatus, 
+fun ffi_uniffi_bindings_p2p_rust_future_complete_i32(`handle`: Long,uniffi_out_err: UniffiRustCallStatus, 
 ): Int
-fun ffi_bindings_p2p_rust_future_poll_u64(`handle`: Long,`callback`: UniffiRustFutureContinuationCallback,`callbackData`: Long,
+fun ffi_uniffi_bindings_p2p_rust_future_poll_u64(`handle`: Long,`callback`: UniffiRustFutureContinuationCallback,`callbackData`: Long,
 ): Unit
-fun ffi_bindings_p2p_rust_future_cancel_u64(`handle`: Long,
+fun ffi_uniffi_bindings_p2p_rust_future_cancel_u64(`handle`: Long,
 ): Unit
-fun ffi_bindings_p2p_rust_future_free_u64(`handle`: Long,
+fun ffi_uniffi_bindings_p2p_rust_future_free_u64(`handle`: Long,
 ): Unit
-fun ffi_bindings_p2p_rust_future_complete_u64(`handle`: Long,uniffi_out_err: UniffiRustCallStatus, 
+fun ffi_uniffi_bindings_p2p_rust_future_complete_u64(`handle`: Long,uniffi_out_err: UniffiRustCallStatus, 
 ): Long
-fun ffi_bindings_p2p_rust_future_poll_i64(`handle`: Long,`callback`: UniffiRustFutureContinuationCallback,`callbackData`: Long,
+fun ffi_uniffi_bindings_p2p_rust_future_poll_i64(`handle`: Long,`callback`: UniffiRustFutureContinuationCallback,`callbackData`: Long,
 ): Unit
-fun ffi_bindings_p2p_rust_future_cancel_i64(`handle`: Long,
+fun ffi_uniffi_bindings_p2p_rust_future_cancel_i64(`handle`: Long,
 ): Unit
-fun ffi_bindings_p2p_rust_future_free_i64(`handle`: Long,
+fun ffi_uniffi_bindings_p2p_rust_future_free_i64(`handle`: Long,
 ): Unit
-fun ffi_bindings_p2p_rust_future_complete_i64(`handle`: Long,uniffi_out_err: UniffiRustCallStatus, 
+fun ffi_uniffi_bindings_p2p_rust_future_complete_i64(`handle`: Long,uniffi_out_err: UniffiRustCallStatus, 
 ): Long
-fun ffi_bindings_p2p_rust_future_poll_f32(`handle`: Long,`callback`: UniffiRustFutureContinuationCallback,`callbackData`: Long,
+fun ffi_uniffi_bindings_p2p_rust_future_poll_f32(`handle`: Long,`callback`: UniffiRustFutureContinuationCallback,`callbackData`: Long,
 ): Unit
-fun ffi_bindings_p2p_rust_future_cancel_f32(`handle`: Long,
+fun ffi_uniffi_bindings_p2p_rust_future_cancel_f32(`handle`: Long,
 ): Unit
-fun ffi_bindings_p2p_rust_future_free_f32(`handle`: Long,
+fun ffi_uniffi_bindings_p2p_rust_future_free_f32(`handle`: Long,
 ): Unit
-fun ffi_bindings_p2p_rust_future_complete_f32(`handle`: Long,uniffi_out_err: UniffiRustCallStatus, 
+fun ffi_uniffi_bindings_p2p_rust_future_complete_f32(`handle`: Long,uniffi_out_err: UniffiRustCallStatus, 
 ): Float
-fun ffi_bindings_p2p_rust_future_poll_f64(`handle`: Long,`callback`: UniffiRustFutureContinuationCallback,`callbackData`: Long,
+fun ffi_uniffi_bindings_p2p_rust_future_poll_f64(`handle`: Long,`callback`: UniffiRustFutureContinuationCallback,`callbackData`: Long,
 ): Unit
-fun ffi_bindings_p2p_rust_future_cancel_f64(`handle`: Long,
+fun ffi_uniffi_bindings_p2p_rust_future_cancel_f64(`handle`: Long,
 ): Unit
-fun ffi_bindings_p2p_rust_future_free_f64(`handle`: Long,
+fun ffi_uniffi_bindings_p2p_rust_future_free_f64(`handle`: Long,
 ): Unit
-fun ffi_bindings_p2p_rust_future_complete_f64(`handle`: Long,uniffi_out_err: UniffiRustCallStatus, 
+fun ffi_uniffi_bindings_p2p_rust_future_complete_f64(`handle`: Long,uniffi_out_err: UniffiRustCallStatus, 
 ): Double
-fun ffi_bindings_p2p_rust_future_poll_pointer(`handle`: Long,`callback`: UniffiRustFutureContinuationCallback,`callbackData`: Long,
+fun ffi_uniffi_bindings_p2p_rust_future_poll_pointer(`handle`: Long,`callback`: UniffiRustFutureContinuationCallback,`callbackData`: Long,
 ): Unit
-fun ffi_bindings_p2p_rust_future_cancel_pointer(`handle`: Long,
+fun ffi_uniffi_bindings_p2p_rust_future_cancel_pointer(`handle`: Long,
 ): Unit
-fun ffi_bindings_p2p_rust_future_free_pointer(`handle`: Long,
+fun ffi_uniffi_bindings_p2p_rust_future_free_pointer(`handle`: Long,
 ): Unit
-fun ffi_bindings_p2p_rust_future_complete_pointer(`handle`: Long,uniffi_out_err: UniffiRustCallStatus, 
+fun ffi_uniffi_bindings_p2p_rust_future_complete_pointer(`handle`: Long,uniffi_out_err: UniffiRustCallStatus, 
 ): Pointer
-fun ffi_bindings_p2p_rust_future_poll_rust_buffer(`handle`: Long,`callback`: UniffiRustFutureContinuationCallback,`callbackData`: Long,
+fun ffi_uniffi_bindings_p2p_rust_future_poll_rust_buffer(`handle`: Long,`callback`: UniffiRustFutureContinuationCallback,`callbackData`: Long,
 ): Unit
-fun ffi_bindings_p2p_rust_future_cancel_rust_buffer(`handle`: Long,
+fun ffi_uniffi_bindings_p2p_rust_future_cancel_rust_buffer(`handle`: Long,
 ): Unit
-fun ffi_bindings_p2p_rust_future_free_rust_buffer(`handle`: Long,
+fun ffi_uniffi_bindings_p2p_rust_future_free_rust_buffer(`handle`: Long,
 ): Unit
-fun ffi_bindings_p2p_rust_future_complete_rust_buffer(`handle`: Long,uniffi_out_err: UniffiRustCallStatus, 
+fun ffi_uniffi_bindings_p2p_rust_future_complete_rust_buffer(`handle`: Long,uniffi_out_err: UniffiRustCallStatus, 
 ): RustBuffer.ByValue
-fun ffi_bindings_p2p_rust_future_poll_void(`handle`: Long,`callback`: UniffiRustFutureContinuationCallback,`callbackData`: Long,
+fun ffi_uniffi_bindings_p2p_rust_future_poll_void(`handle`: Long,`callback`: UniffiRustFutureContinuationCallback,`callbackData`: Long,
 ): Unit
-fun ffi_bindings_p2p_rust_future_cancel_void(`handle`: Long,
+fun ffi_uniffi_bindings_p2p_rust_future_cancel_void(`handle`: Long,
 ): Unit
-fun ffi_bindings_p2p_rust_future_free_void(`handle`: Long,
+fun ffi_uniffi_bindings_p2p_rust_future_free_void(`handle`: Long,
 ): Unit
-fun ffi_bindings_p2p_rust_future_complete_void(`handle`: Long,uniffi_out_err: UniffiRustCallStatus, 
+fun ffi_uniffi_bindings_p2p_rust_future_complete_void(`handle`: Long,uniffi_out_err: UniffiRustCallStatus, 
 ): Unit
 
 }
@@ -948,23 +948,23 @@ private fun uniffiCheckContractApiVersion(lib: IntegrityCheckingUniffiLib) {
     // Get the bindings contract version from our ComponentInterface
     val bindings_contract_version = 29
     // Get the scaffolding contract version by calling the into the dylib
-    val scaffolding_contract_version = lib.ffi_bindings_p2p_uniffi_contract_version()
+    val scaffolding_contract_version = lib.ffi_uniffi_bindings_p2p_uniffi_contract_version()
     if (bindings_contract_version != scaffolding_contract_version) {
         throw RuntimeException("UniFFI contract version mismatch: try cleaning and rebuilding your project")
     }
 }
 @Suppress("UNUSED_PARAMETER")
 private fun uniffiCheckApiChecksums(lib: IntegrityCheckingUniffiLib) {
-    if (lib.uniffi_bindings_p2p_checksum_func_send_message() != 16353.toShort()) {
+    if (lib.uniffi_uniffi_bindings_p2p_checksum_func_raw_message() != 10691.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
-    if (lib.uniffi_bindings_p2p_checksum_func_set_listener() != 36803.toShort()) {
+    if (lib.uniffi_uniffi_bindings_p2p_checksum_func_set_listener() != 37429.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
-    if (lib.uniffi_bindings_p2p_checksum_func_start() != 2884.toShort()) {
+    if (lib.uniffi_uniffi_bindings_p2p_checksum_func_start() != 1403.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
-    if (lib.uniffi_bindings_p2p_checksum_method_eventlistener_on_event() != 4519.toShort()) {
+    if (lib.uniffi_uniffi_bindings_p2p_checksum_method_eventlistener_on_event() != 40838.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
 }
@@ -1374,7 +1374,7 @@ open class EventListenerImpl: Disposable, AutoCloseable, EventListener
         override fun run() {
             pointer?.let { ptr ->
                 uniffiRustCall { status ->
-                    UniffiLib.INSTANCE.uniffi_bindings_p2p_fn_free_eventlistener(ptr, status)
+                    UniffiLib.INSTANCE.uniffi_uniffi_bindings_p2p_fn_free_eventlistener(ptr, status)
                 }
             }
         }
@@ -1382,7 +1382,7 @@ open class EventListenerImpl: Disposable, AutoCloseable, EventListener
 
     fun uniffiClonePointer(): Pointer {
         return uniffiRustCall() { status ->
-            UniffiLib.INSTANCE.uniffi_bindings_p2p_fn_clone_eventlistener(pointer!!, status)
+            UniffiLib.INSTANCE.uniffi_uniffi_bindings_p2p_fn_clone_eventlistener(pointer!!, status)
         }
     }
 
@@ -1390,7 +1390,7 @@ open class EventListenerImpl: Disposable, AutoCloseable, EventListener
             return FfiConverterString.lift(
     callWithPointer {
     uniffiRustCall() { _status ->
-    UniffiLib.INSTANCE.uniffi_bindings_p2p_fn_method_eventlistener_on_event(
+    UniffiLib.INSTANCE.uniffi_uniffi_bindings_p2p_fn_method_eventlistener_on_event(
         it, FfiConverterTypeEvent.lower(`event`),_status)
 }
     }
@@ -1436,7 +1436,7 @@ internal object uniffiCallbackInterfaceEventListener {
     // Registers the foreign callback with the Rust side.
     // This method is generated for each callback interface.
     internal fun register(lib: UniffiLib) {
-        lib.uniffi_bindings_p2p_fn_init_callback_vtable_eventlistener(vtable)
+        lib.uniffi_uniffi_bindings_p2p_fn_init_callback_vtable_eventlistener(vtable)
     }
 }
 
@@ -1499,10 +1499,10 @@ public object FfiConverterTypeEvent: FfiConverterRustBuffer<Event> {
             FfiConverterString.write(value.`topic`, buf)
             FfiConverterString.write(value.`message`, buf)
     }
-} fun `sendMessage`(`topic`: kotlin.String, `message`: kotlin.String)
+} fun `rawMessage`(`topic`: kotlin.String, `message`: kotlin.String)
         = 
     uniffiRustCall() { _status ->
-    UniffiLib.INSTANCE.uniffi_bindings_p2p_fn_func_send_message(
+    UniffiLib.INSTANCE.uniffi_uniffi_bindings_p2p_fn_func_raw_message(
         FfiConverterString.lower(`topic`),FfiConverterString.lower(`message`),_status)
 }
     
@@ -1510,7 +1510,7 @@ public object FfiConverterTypeEvent: FfiConverterRustBuffer<Event> {
  fun `setListener`(`listener`: EventListener)
         = 
     uniffiRustCall() { _status ->
-    UniffiLib.INSTANCE.uniffi_bindings_p2p_fn_func_set_listener(
+    UniffiLib.INSTANCE.uniffi_uniffi_bindings_p2p_fn_func_set_listener(
         FfiConverterTypeEventListener.lower(`listener`),_status)
 }
     
@@ -1518,7 +1518,7 @@ public object FfiConverterTypeEvent: FfiConverterRustBuffer<Event> {
  fun `start`(`serverAddress`: kotlin.String, `peerId`: kotlin.String, `username`: kotlin.String)
         = 
     uniffiRustCall() { _status ->
-    UniffiLib.INSTANCE.uniffi_bindings_p2p_fn_func_start(
+    UniffiLib.INSTANCE.uniffi_uniffi_bindings_p2p_fn_func_start(
         FfiConverterString.lower(`serverAddress`),FfiConverterString.lower(`peerId`),FfiConverterString.lower(`username`),_status)
 }
     

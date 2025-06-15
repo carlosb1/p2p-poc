@@ -1,12 +1,10 @@
 #[cfg(test)]
 mod tests {
-    use super::*;
+    use rand::Rng;
+    use std::sync::atomic::{AtomicBool, Ordering};
     use std::sync::{Arc, Mutex};
     use std::time::Duration;
-    use std::thread;
-    use std::sync::atomic::{AtomicBool, Ordering};
-    use rand::Rng;
-    use bindings_p2p::{Event, EventListener, init_logging, send_message, set_listener, start};
+    use uniffi_bindings_p2p::{init_logging, raw_message, set_listener, start, Event, EventListener};
 
     const TEST_PEER_ID: &str = "12D3KooWPFwYxQzNrZd5oYTUFiczPstsGMepKwYBkZCBDMt85kz9";
     const TEST_USERNAME: &str = "carlosb";
@@ -16,7 +14,6 @@ mod tests {
         called: Arc<AtomicBool>,
         last_message: Arc<Mutex<Option<String>>>,
     }
-
 
     pub fn generate_rand_msg() -> String {
         let mut rng = rand::rng();
@@ -48,23 +45,27 @@ mod tests {
         // Register the listener
         set_listener(listener.clone());
 
-
-
         // Start the node (can use dummy values)
-        start(TEST_ADDRESS.to_string(), TEST_PEER_ID.to_string(),TEST_USERNAME.to_string());
+        start(
+            TEST_ADDRESS.to_string(),
+            TEST_PEER_ID.to_string(),
+            TEST_USERNAME.to_string(),
+        );
 
         // Wait a bit for the node to initialize
         tokio::time::sleep(Duration::from_secs(1)).await;
 
-
         // Send a test message
-        send_message(TEST_TOPIC.to_string(), "hello world".to_string() + generate_rand_msg().as_str());;
+        raw_message(
+            TEST_TOPIC.to_string(),
+            "hello world".to_string() + generate_rand_msg().as_str(),
+        );
 
         // Wait for the message to be processedS
         tokio::time::sleep(Duration::from_secs(5)).await;
 
         // Assertions
- //       assert!(called.load(Ordering::SeqCst), "Listener was not called");
+        //       assert!(called.load(Ordering::SeqCst), "Listener was not called");
         let message = last_message.lock().unwrap().clone();
         assert!(message.is_some(), "Listener did not receive a message");
     }

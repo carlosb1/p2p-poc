@@ -1,4 +1,5 @@
 [workspace]
+resolver = "3"
 members = [
     "messages-p2p", "bindings-p2p"
 , "protocol-p2p", "messages-types"]

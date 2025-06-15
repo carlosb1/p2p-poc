@@ -4,7 +4,7 @@ version = "0.1.0"
 edition = "2021"
 
 [lib]
-name = "bindings_p2p"
+name = "uniffi_bindings_p2p"
 crate-type = ["cdylib", "rlib"] #cdylib for android and rlib for testing
 
 [[bin]]

@@ -1,48 +1,92 @@
-# 🕸️ P2P Chat — Work in Progress
+ # AWS Python S3 Bucket Pulumi Template
 
-**P2P Chat** is a decentralized messaging system written in Rust using [`libp2p`](https://libp2p.io/). It is designed as an experimental playground to explore peer-to-peer protocols, message passing, and distributed system design.
+ A minimal Pulumi template for provisioning a single AWS S3 bucket using Python.
 
-> ⚠️ This project is a **Work in Progress** and not ready for production. It is shared to demonstrate system design skills, Rust expertise, and interest in decentralized communication technologies — useful for technical assessments or as part of a resume.
+ ## Overview
 
----
+ This template provisions an S3 bucket (`pulumi_aws.s3.BucketV2`) in your AWS account and exports its ID as an output. It’s an ideal starting point when:
+  - You want to learn Pulumi with AWS in Python.
+  - You need a barebones S3 bucket deployment to build upon.
+  - You prefer a minimal template without extra dependencies.
 
-## 🔧 Features (WIP)
+ ## Prerequisites
 
-- ⚙️ **Rust-based architecture** with async I/O powered by `tokio`
-- 🌐 **libp2p** for peer discovery, pub-sub, and direct messaging
-- 💬 **Chat messaging system** with topic-based subscriptions
-- 🧠 **Custom trait-based message handler architecture** for extensibility
-- 💾 Optional **sled-based local storage** for persistence
-- 🔒 Future plans include encryption, reputation handling, and consensus support
+ - An AWS account with permissions to create S3 buckets.
+ - AWS credentials configured in your environment (for example via AWS CLI or environment variables).
+ - Python 3.6 or later installed.
+ - Pulumi CLI already installed and logged in.
 
----
+ ## Getting Started
 
-## 🧠 Why This Project?
+ 1. Generate a new project from this template:
+    ```bash
+    pulumi new aws-python
+    ```
+ 2. Follow the prompts to set your project name and AWS region (default: `us-east-1`).
+ 3. Change into your project directory:
+    ```bash
+    cd <project-name>
+    ```
+ 4. Preview the planned changes:
+    ```bash
+    pulumi preview
+    ```
+ 5. Deploy the stack:
+    ```bash
+    pulumi up
+    ```
+ 6. Tear down when finished:
+    ```bash
+    pulumi destroy
+    ```
 
-This is part of a broader effort to:
+ ## Project Layout
 
-- Deepen understanding of P2P networking fundamentals
-- Experiment with decentralized message passing protocols
-- Showcase advanced Rust development skills in real-world networking scenarios
+ After running `pulumi new`, your directory will look like:
+ ```
+ ├── __main__.py         # Entry point of the Pulumi program
+ ├── Pulumi.yaml         # Project metadata and template configuration
+ ├── requirements.txt    # Python dependencies
+ └── Pulumi.<stack>.yaml # Stack-specific configuration (e.g., Pulumi.dev.yaml)
+ ```
 
-It complements my resume by reflecting strong interest and capability in:
+ ## Configuration
 
-- Systems programming
-- Distributed systems
-- Protocol design
-- Clean and modular Rust codebases
+ This template defines the following config value:
 
----
+ - `aws:region` (string)
+   The AWS region to deploy resources into.
+   Default: `us-east-1`
 
-## 🛠️ Build & Run
+ View or update configuration with:
+ ```bash
+ pulumi config get aws:region
+ pulumi config set aws:region us-west-2
+ ```
 
-```bash
-# Clone the project
-git clone https://github.com/your-username/p2p-chat.git
-cd p2p-chat
+ ## Outputs
 
-# Build the project
-cargo build
+ Once deployed, the stack exports:
 
-# Run a node (more instructions coming soon)
-cargo run --bin node
+ - `bucket_name` — the ID of the created S3 bucket.
+
+ Retrieve outputs with:
+ ```bash
+ pulumi stack output bucket_name
+ ```
+
+ ## Next Steps
+
+ - Customize `__main__.py` to add or configure additional resources.
+ - Explore the Pulumi AWS SDK: https://www.pulumi.com/registry/packages/aws/
+ - Break your infrastructure into modules for better organization.
+ - Integrate into CI/CD pipelines for automated deployments.
+
+ ## Help and Community
+
+ If you have questions or need assistance:
+ - Pulumi Documentation: https://www.pulumi.com/docs/
+ - Community Slack: https://slack.pulumi.com/
+ - GitHub Issues: https://github.com/pulumi/pulumi/issues
+
+ Contributions and feedback are always welcome!

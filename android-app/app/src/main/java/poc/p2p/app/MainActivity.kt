@@ -57,8 +57,6 @@ class MainActivity : AppCompatActivity() {
         handleIncomingLink(intent);
 
 
-
-
         // Carga el layout base
         setContentView(buildUI())
 
@@ -92,7 +90,7 @@ class MainActivity : AppCompatActivity() {
 
 
             if (msg.isNotBlank()) {
-                sendMessage("chat-room", msg)
+                rawMessage("chat-room", msg)
                 input.setText("")
             }
         }

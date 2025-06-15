@@ -1,3 +1,14 @@
-target
+*.pyc
+venv/
 .idea
+**/.idea
 temp_config.toml
+**/temp_config.toml
+target
+venv
+**venv
+.venv
+**.venv
+.aws/
+.aws
+aws
