@@ -1,27 +1,19 @@
 use std::collections::HashMap;
-use std::hash::{Hash, Hasher};
 use std::sync::Arc;
-use std::sync::mpsc::Sender;
-use std::thread::sleep;
 
-use libp2p::{identity, PeerId};
+use libp2p::identity;
 use tokio::sync::{mpsc, Mutex};
-use tokio::sync::broadcast::Receiver;
-use tokio::task::JoinHandle;
 
 use messages_types::ChatCommand;
 use protocol_p2p::client::LinkClient;
-use protocol_p2p::db::update_reputations;
 use protocol_p2p::models::messages::ContentMessage;
 use protocol_p2p::models::messages::Vote;
-use protocol_p2p::protocol::MessageHandler;
 
 use crate::db::init_db;
 
 mod db;
 mod models;
 pub mod protocol;
-
 
 /// A simple mock server that relays messages to all subscribers by topic.
 struct MockPubSubServer {
@@ -67,7 +59,7 @@ impl MockPubSubServer {
                 ChatCommand::Subscribe(_) => {
                     log::debug!("Mocking subscribe command, not implemented in mock server.");
                 }
-                ChatCommand::SendOne(peer_id, data) => {
+                ChatCommand::SendOne(_, _) => {
                     //
                 }
                 ChatCommand::Quit => {
@@ -84,7 +76,6 @@ async fn main() {
     log::info!("Starting Link Client...");
     let topic = "topic:agreement";
     let content = "news_abc_001";
-
 
     let (cmd_tx, cmd_rx) = mpsc::channel(64);
     let server = Arc::new(MockPubSubServer::new(cmd_rx));
@@ -108,12 +99,15 @@ async fn main() {
         let peer_id = keypair.public().to_peer_id();
         let db = Arc::new(init_db(&format!("peer_{i}")).unwrap());
         db_peers.push(db.clone());
-        let mut client = Arc::new(LinkClient::new(peer_id.clone(), cmd_cloned_tx, db.clone(), keypair.clone()));
-
+        let client = Arc::new(LinkClient::new(
+            peer_id.clone(),
+            cmd_cloned_tx,
+            db.clone(),
+            keypair.clone(),
+        ));
 
         clients.push(client.clone());
         created_peer_ids.push(peer_id.clone());
-
 
         let _ = tokio::task::spawn(async move {
             let (tx, mut rx) = mpsc::channel(32);
@@ -125,11 +119,25 @@ async fn main() {
             let t_peer_id = client.peer_id().clone();
             log::info!("{:?} - Waiting for a new message", t_peer_id);
             while let Some(message) = rx.recv().await {
-                log::info!("Client {} received message: {:?}", t_peer_id.clone(), String::from_utf8_lossy(&message));
-                if let Ok(content_message) = serde_json::from_slice::<ContentMessage>(&message) {
-                    let response = handler.lock().await.handle_message(t_peer_id, &message, topic);
+                log::info!(
+                    "Client {} received message: {:?}",
+                    t_peer_id.clone(),
+                    String::from_utf8_lossy(&message)
+                );
+                if let Ok(_) = serde_json::from_slice::<ContentMessage>(&message) {
+                    let response = handler
+                        .lock()
+                        .await
+                        .handle_message(t_peer_id, &message, topic);
                     if let Some(response_message) = response {
-                        client.send(topic.to_string(), &serde_json::from_slice::<ContentMessage>(&response_message).unwrap()).await.expect("Failed to send message");
+                        client
+                            .send(
+                                topic.to_string(),
+                                &serde_json::from_slice::<ContentMessage>(&response_message)
+                                    .unwrap(),
+                            )
+                            .await
+                            .expect("Failed to send message");
                     }
                 } else {
                     log::warn!("Received invalid message format");
@@ -138,7 +146,6 @@ async fn main() {
         });
     }
 
-
     let keypair = identity::Keypair::generate_ed25519();
     let peer_id = keypair.public().to_peer_id();
 
@@ -146,7 +153,12 @@ async fn main() {
     let db = Arc::new(init_db(&format!("myself_peer")).unwrap());
 
     log::info!("Myself peer ID: {}", peer_id.to_string());
-    let myself = Arc::new(LinkClient::new(peer_id.clone(), cmd_tx.clone(), db.clone(), keypair.clone()));
+    let myself = Arc::new(LinkClient::new(
+        peer_id.clone(),
+        cmd_tx.clone(),
+        db.clone(),
+        keypair.clone(),
+    ));
     //created_peer_ids.push(peer_id.clone());
 
     // the tricky part, client use tx from server and server the other tx to send to the client
@@ -156,43 +168,67 @@ async fn main() {
 
     /* listener for waiting validation, move to another function and do it sync? */
     let cloned_myself = myself.clone();
-    let listen = tokio::task::spawn(async move {
+    let _ = tokio::task::spawn(async move {
         log::info!("Myself listening for messages...");
-        cloned_myself.wait_for_validators().await.expect("Failed to start listening");
+        cloned_myself
+            .wait_for_validators()
+            .await
+            .expect("Failed to start listening");
     });
 
     /* running my handler */
-    let mut cloned_myself = myself.clone();
-    let listen = tokio::task::spawn(async move {
+    let cloned_myself = myself.clone();
+    let _ = tokio::task::spawn(async move {
         //        let mut mocked_peer_ids = Vec::new();
         while let Some(message) = my_rx.recv().await {
-            log::info!("Client received message: {:?}",String::from_utf8_lossy(&message));
-            if let Ok(content_message) = serde_json::from_slice::<ContentMessage>(&message) {
+            log::info!(
+                "Client received message: {:?}",
+                String::from_utf8_lossy(&message)
+            );
+            if let Ok(_) = serde_json::from_slice::<ContentMessage>(&message) {
                 //get back the peer id from clients to resend the message
                 if let Some(peer_id) = created_peer_ids.pop() {
-                    cloned_myself.inner_handler.lock().await.handle_message(peer_id, &message, topic);
+                    cloned_myself
+                        .inner_handler
+                        .lock()
+                        .await
+                        .handle_message(peer_id, &message, topic);
                 }
             } else {
                 log::warn!("Received invalid message format");
             }
         }
     });
-    let key = myself.new_key_available(topic, content).expect("Failed to create key for voting");
+    let key = myself
+        .new_key_available(topic, content)
+        .expect("Failed to create key for voting");
     log::info!("Myself asking for validation");
-    myself.ask_validation(&key.clone(), topic, content).await.expect("Failed to ask for validation");
+    myself
+        .ask_validation(&key.clone(), topic, content)
+        .await
+        .expect("Failed to ask for validation");
     log::info!("Waiting for all clients to initialize and listen...");
     tokio::time::sleep(tokio::time::Duration::from_secs(10)).await;
     log::info!("--------------------------------------------------------------------");
     log::info!("All clients initialized, starting voting process...");
 
     for client in clients {
-        log::info!("-> Client {} is voting for key: {:?} and topic: {:?}", client.peer_id(), key, topic);
+        log::info!(
+            "-> Client {} is voting for key: {:?} and topic: {:?}",
+            client.peer_id(),
+            key,
+            topic
+        );
         client.add_vote(&key, &topic, Vote::Yes).await.unwrap()
     }
 
     tokio::time::sleep(tokio::time::Duration::from_secs(10)).await;
     log::info!("--------------------------------------------------------------------");
-    println!("List status for each client for key={:?} and topic={:?}", key.clone(), topic.clone());
+    println!(
+        "List status for each client for key={:?} and topic={:?}",
+        key.clone(),
+        topic
+    );
 
     let myself_db = myself.db();
     let voters = db::get_voters(&myself_db, &key.clone(), topic).expect("Failed to get voters");
@@ -212,14 +248,12 @@ async fn main() {
         println!("Validated content: {:?}", content);
     }
 
-
     for db in db_peers {
         println!("Validating contents in peer database...");
         for content in db::get_contents(&db) {
             println!("Validated content: {:?}", content);
         }
     }
-
 
     std::fs::remove_dir_all("myself_peer").unwrap();
     std::fs::remove_dir_all("peer_0").unwrap();

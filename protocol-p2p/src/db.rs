@@ -1,19 +1,22 @@
-use std::collections::HashSet;
 use std::hash::{DefaultHasher, Hash, Hasher};
-use std::sync::Arc;
 
-use libp2p::PeerId;
 use serde::{Deserialize, Serialize};
 use serde_json;
 use sled;
 use sled::Db;
 
-use crate::models::db::VoteStatus;
-
-pub fn create_key_for_voting_db(content_id: &str, topic: &str, status: &str, number_round: u32) -> String {
+pub fn create_key_for_voting_db(
+    content_id: &str,
+    topic: &str,
+    status: &str,
+    number_round: u32,
+) -> String {
     let hash_content_id = default_hash(content_id);
 
-    format!("vote_status/{}:{}:{}:{}", topic, hash_content_id, status, number_round)
+    format!(
+        "vote_status/{}:{}:{}:{}",
+        topic, hash_content_id, status, number_round
+    )
 }
 
 pub fn create_key_without_status(content_id: &str, topic: &str) -> String {
@@ -28,7 +31,6 @@ fn default_hash(content_id: &str) -> u64 {
     hash_content_id
 }
 
-
 pub fn init_db(path: &str) -> anyhow::Result<Db> {
     log::info!("Initializing database at path: {}", path);
     let db = sled::open(path)?;
@@ -40,16 +42,24 @@ pub fn init_db(path: &str) -> anyhow::Result<Db> {
     Ok(db)
 }
 
-
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct Jury {
     voters: Vec<String>,
 }
 
-
-pub fn store_voter(db: &sled::Db, id_votation: &str, source_peer: &str, topic: &str) -> anyhow::Result<()> {
+pub fn store_voter(
+    db: &sled::Db,
+    id_votation: &str,
+    source_peer: &str,
+    topic: &str,
+) -> anyhow::Result<()> {
     let key = format!("election/{topic}/jury/{id_votation}");
-    log::debug!("Storing voter {} for votation {} with key {:?}", source_peer, id_votation, key);
+    log::debug!(
+        "Storing voter {} for votation {} with key {:?}",
+        source_peer,
+        id_votation,
+        key
+    );
     let jury = if let Some(value) = db.get(&key)? {
         let mut jury: Jury = serde_json::from_slice(&value)?;
         if jury.voters.contains(&source_peer.to_string()) {
@@ -60,18 +70,19 @@ pub fn store_voter(db: &sled::Db, id_votation: &str, source_peer: &str, topic: &
         jury
     } else {
         log::debug!("Including a new jury process for votation {}", id_votation);
-        Jury { voters: vec![source_peer.to_string()] }
+        Jury {
+            voters: vec![source_peer.to_string()],
+        }
     };
     db.insert(key.to_string(), serde_json::to_vec(&jury)?)?;
     Ok(())
 }
 
-
 pub fn get_voters(db: &sled::Db, id_votation: &str, topic: &str) -> anyhow::Result<Vec<String>> {
     let key = format!("election/{topic}/jury/{id_votation}");
     log::debug!("getting voter with key {:?}", key);
     if let Some(value) = db.get(&key)? {
-        let mut jury: Jury = serde_json::from_slice(&value)?;
+        let jury: Jury = serde_json::from_slice(&value)?;
         return Ok(jury.voters);
     }
     Ok(vec![])
@@ -90,35 +101,60 @@ pub fn get_reputation(db: &sled::Db, topic: &str, peer_id: &str) -> Option<f32> 
     None
 }
 
-pub fn set_reputation(db: &sled::Db, topic: &str, peer_id: &str, reputation: f32) -> Result<(), sled::Error> {
+pub fn set_reputation(
+    db: &sled::Db,
+    topic: &str,
+    peer_id: &str,
+    reputation: f32,
+) -> Result<(), sled::Error> {
     let key = format!("election/{topic}/reputation/{peer_id}");
-    log::debug!("Setting reputation for peer {} in topic {} with key {:?}", peer_id, topic, key);
+    log::debug!(
+        "Setting reputation for peer {} in topic {} with key {:?}",
+        peer_id,
+        topic,
+        key
+    );
     let value = serde_json::to_vec(&reputation).expect("Failed to serialize reputation");
     db.insert(key, value)?;
     Ok(())
 }
 
 pub fn get_reputations(db: &sled::Db, topic: &str) -> Vec<(String, f32)> {
-    let results: Vec<(String, f32)> = db.scan_prefix(format!("election/{topic}/reputation")).map(|item| {
-        if let Ok((key, value)) = item {
-            if let Ok(reputation) = serde_json::from_slice::<f32>(&value) {
-                if let Ok(peer_id) = String::from_utf8(key.to_vec()) {
-                    return Some((peer_id, reputation));
+    let results: Vec<(String, f32)> = db
+        .scan_prefix(format!("election/{topic}/reputation"))
+        .map(|item| {
+            if let Ok((key, value)) = item {
+                if let Ok(reputation) = serde_json::from_slice::<f32>(&value) {
+                    if let Ok(peer_id) = String::from_utf8(key.to_vec()) {
+                        return Some((peer_id, reputation));
+                    }
                 }
             }
-        }
-        None
-    }).filter_map(|x| x).collect();
+            None
+        })
+        .filter_map(|x| x)
+        .collect();
     return results;
 }
 
-pub fn update_reputations(db: &sled::Db, topic: &str, reputations: &[(String, f32)], default_reputation: f32) -> anyhow::Result<()> {
+pub fn update_reputations(
+    db: &sled::Db,
+    topic: &str,
+    reputations: &[(String, f32)],
+    default_reputation: f32,
+) -> anyhow::Result<()> {
     for (peer_id, reputation) in reputations {
         match get_reputation(db, topic, peer_id) {
             Some(existing_reputation) => {
                 // increase reputation
                 let new_reputation = existing_reputation + reputation;
-                log::debug!("Updating reputation for peer {} in topic {} from {} to {}", peer_id, topic, existing_reputation, new_reputation);
+                log::debug!(
+                    "Updating reputation for peer {} in topic {} from {} to {}",
+                    peer_id,
+                    topic,
+                    existing_reputation,
+                    new_reputation
+                );
                 set_reputation(db, topic, peer_id, new_reputation)?;
             }
             None => {
@@ -134,7 +170,6 @@ pub fn update_reputations(db: &sled::Db, topic: &str, reputations: &[(String, f3
 pub enum StateContent {
     Approved,
     Rejected,
-
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
@@ -149,14 +184,16 @@ impl DataContent {
         Self {
             id_votation,
             content,
-            approved: if approved { StateContent::Approved } else { StateContent::Rejected },
+            approved: if approved {
+                StateContent::Approved
+            } else {
+                StateContent::Rejected
+            },
         }
     }
 }
 
-
-pub fn include_new_validated_content(db: &Db,
-                                     data_content: &DataContent) -> anyhow::Result<()> {
+pub fn include_new_validated_content(db: &Db, data_content: &DataContent) -> anyhow::Result<()> {
     let id_votation = data_content.id_votation.clone();
     let key = format!("content/{id_votation}");
     let value = serde_json::to_vec(data_content).expect("Failed to serialize reputation");
@@ -165,15 +202,16 @@ pub fn include_new_validated_content(db: &Db,
 }
 
 pub fn get_contents(db: &Db) -> Vec<DataContent> {
-    db.scan_prefix(format!("content/")).filter_map(|item| {
-        if let Ok((key, value)) = item {
-            serde_json::from_slice::<DataContent>(&value).ok()
-        } else {
-            None
-        }
-    }).collect()
+    db.scan_prefix(format!("content/"))
+        .filter_map(|item| {
+            if let Ok((_key, value)) = item {
+                serde_json::from_slice::<DataContent>(&value).ok()
+            } else {
+                None
+            }
+        })
+        .collect()
 }
-
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct Votation {
@@ -207,7 +245,11 @@ impl Votation {
 
 /*  */
 
-pub fn insert_and_update_status_vote(db: &sled::Db, id_votation: &str, status_vote: &Votation) -> anyhow::Result<()> {
+pub fn insert_and_update_status_vote(
+    db: &sled::Db,
+    id_votation: &str,
+    status_vote: &Votation,
+) -> anyhow::Result<()> {
     let value = serde_json::to_string(&status_vote)?;
     db.insert(id_votation, value.into_bytes())?;
     Ok(())
@@ -216,11 +258,8 @@ pub fn insert_and_update_status_vote(db: &sled::Db, id_votation: &str, status_vo
 pub fn get_status_vote(db: &sled::Db, key: &String) -> Option<Votation> {
     db.get(key)
         .ok()?
-        .and_then(|value| {
-            serde_json::from_slice::<Votation>(&value).ok()
-        }.or(None))
+        .and_then(|value| { serde_json::from_slice::<Votation>(&value).ok() }.or(None))
 }
-
 
 #[test]
 fn test_create_key_for_voting_db() {
@@ -237,6 +276,8 @@ fn test_create_key_without_status() {
 
 #[test]
 fn test_store_and_get_voters() {
+    use std::collections::HashSet;
+
     let tmp_dir = tempfile::tempdir().unwrap();
     let db = init_db(tmp_dir.path().to_str().unwrap()).unwrap();
     let id_votation = "vot1";
@@ -303,4 +344,3 @@ fn test_insert_and_get_status_vote() {
     assert_eq!(result.id_votation, vote.id_votation);
     assert_eq!(result.status, "approved");
 }
-
