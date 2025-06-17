@@ -48,7 +48,7 @@ app_routetable_association = aws.ec2.MainRouteTableAssociation(
 app_security_group = aws.ec2.SecurityGroup(
     "security-group",
     vpc_id=app_vpc.id,
-    description="Enables HTTP access",
+    description="Enables all access",
     ingress=[
         aws.ec2.SecurityGroupIngressArgs(
             protocol="tcp",
@@ -120,70 +120,32 @@ task_policy_attachment = aws.iam.RolePolicyAttachment(
 port_tracker_server = 3000
 port_p2p_tracker_server = 15000
 
+
+# Creating a Cloudwatch instance to store the logs that the ECS services produce
+django_log_group = aws.cloudwatch.LogGroup(
+    "p2p-infra-log-group", retention_in_days=1, name="p2p-infra-log-group"
+)
+
+
 # The application's frontend: A Django service
 
 # Creating a target group through which the Django frontend receives requests
 tracker_server_targetgroup = aws.lb.TargetGroup(
-    "tracker-server-targetgroup",
+    "t-server-targetgroup",
     port=port_tracker_server,
     protocol="TCP",
     target_type="ip",
     vpc_id=app_vpc.id,
 )
 
-# Creating a load balancer to spread out incoming requests
-tracker_server_balancer = aws.lb.LoadBalancer(
-    "tracker-server-balancer",
-    load_balancer_type="network",
-    internal=False,
-    security_groups=[app_security_group.id],  #TODO add security group
-    subnets=[app_vpc_subnet.id],
-)
-
-# Forwards all public traffic using port 80 to the target group
-tracker_server_listener = aws.lb.Listener(
-    "tracker-server-listener",
-    load_balancer_arn=tracker_server_balancer.arn,
-    port=port_tracker_server,
-    protocol="TCP",
-    default_actions=[
-        aws.lb.ListenerDefaultActionArgs(
-            type="forward",
-            target_group_arn=tracker_server_targetgroup.arn,
-        )
-    ],
-)
 
 # Creating a target group through which the Django frontend receives requests
-p2p_tracker_server_targetgroup = aws.lb.TargetGroup(
-    "tracker-p2p-server-targetgroup",
+server_targetgroup = aws.lb.TargetGroup(
+    "p2p-server-targetgroup",
     port=port_p2p_tracker_server,
     protocol="TCP",
     target_type="ip",
     vpc_id=app_vpc.id,
-)
-
-# Creating a load balancer to spread out incoming requests
-p2p_tracker_server_balancer = aws.lb.LoadBalancer(
-    "tracker-p2p-server-balancer",
-    load_balancer_type="network",
-    internal=False,
-    security_groups=[app_security_group.id],  #TODO add security group
-    subnets=[app_vpc_subnet.id],
-)
-
-# Forwards all public traffic using port 80 to the target group
-p2p_tracker_server_listener = aws.lb.Listener(
-    "tracker-p2p-server-listener",
-    load_balancer_arn=tracker_server_balancer.arn,
-    port=port_p2p_tracker_server,
-    protocol="TCP",
-    default_actions=[
-        aws.lb.ListenerDefaultActionArgs(
-            type="forward",
-            target_group_arn=tracker_server_targetgroup.arn,
-        )
-    ],
 )
 
 
@@ -207,33 +169,20 @@ tracker_server_task_definition = aws.ecs.TaskDefinition(
                 "image": tracker_server_image_name,
                 "memory": 512,
                 "essential": True,
-                "portMappings": [{"containerPort": 80, "hostPort": 80, "protocol": "tcp"}],
+                "portMappings": [{"containerPort": port_tracker_server, "hostPort": port_tracker_server, "protocol": "tcp"},
+                                 {"containerPort": port_p2p_tracker_server, "hostPort": port_p2p_tracker_server, "protocol": "tcp"}],
                 "environment": [
                     #   {"name": "SECRET_KEY", "value": django_secret_key},
-#                    {"name": "DJANGO_NAME", "value": django_admin_name},
-#                    {
-#                        "name": "DATABASE_PORT",
-#                        "value": mysql_rds_server.port.apply(lambda x: str(int(x))),
-#                    },
-#                    {"name": "DASHBOARD_PORT", "value": str(port_dashboard)},
-
                 ],
                 "logConfiguration": {
                     "logDriver": "awslogs",
                     "options": {
-                        "awslogs-group": "django-log-group",
+                        "awslogs-group": "p2p-infra-log-group",
                         "awslogs-region": availability_zone,
-                        "awslogs-stream-prefix": "djangoApp-site",
+                        "awslogs-stream-prefix": "p2p-infra-site",
                     },
                 },
-                "mountPoints": [
-                    {
-                        "sourceVolume": "shared_uploads",
-                        "containerPath": "/app/shared_uploads",
-                        "readOnly": False
-                    }
-                ],
-                "command": ["sh", "-c", "cd /app && ./set_up_database.sh && python manage.py runserver 0.0.0.0:80"],
+             #   "command": [],
             }
         ]
     ),
@@ -254,17 +203,5 @@ tracker_server_service = aws.ecs.Service(
         subnets=[app_vpc_subnet.id],
         security_groups=[app_security_group.id],
     ),
-    load_balancers=[
-        aws.ecs.ServiceLoadBalancerArgs(
-            target_group_arn=tracker_server_targetgroup.arn,
-            container_name="tracker-server-container",
-            container_port=port_tracker_server,
-        ),
-        aws.ecs.ServiceLoadBalancerArgs(
-            target_group_arn=p2p_tracker_server_targetgroup.arn,
-            container_name="tracker-server-container",
-            container_port=port_p2p_tracker_server,
-        )
-    ],
-    opts=pulumi.ResourceOptions(depends_on=[tracker_server_listener, p2p_tracker_server_listener]),
+    opts=pulumi.ResourceOptions(depends_on=[]),
 )

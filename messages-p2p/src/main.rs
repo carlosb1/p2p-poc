@@ -1,7 +1,6 @@
 use crate::p2p::bootstrap::BootstrapServer;
 use axum::{extract::State, routing::get, Router};
 use dotenv::dotenv;
-use libp2p::identity;
 use libp2p::identity::Keypair;
 use once_cell::sync::Lazy;
 use serde::{Deserialize, Serialize};
@@ -14,9 +13,8 @@ pub mod p2p;
 
 static DEFAULT_LISTENS_ON: Lazy<Vec<String>> = Lazy::new(|| {
     vec![
-        "/ip4/0.0.0.0/tcp/0",
-        "/ip4/127.0.0.1/tcp/34291",
-        "/ip4/0.0.0.0/tcp/34291",
+        "/ip4/127.0.0.1/tcp/15000",
+        "/ip4/0.0.0.0/tcp/15000",
     ]
     .into_iter()
     .map(String::from)
@@ -91,7 +89,6 @@ impl TrackerServer {
 async fn main() {
     // Graceful shutdown control
     init_logging();
-
     dotenv().ok(); // carga el archivo .env
 
     let tracker_address = env::var("TRACKER_ADDRESS").unwrap_or("0.0.0.0".to_string());
@@ -113,13 +110,15 @@ async fn main() {
         tracker_address, tracker_port
     );
 
+    let p2p_port = 15000;
     println!("Listening on = {:?} ", listen_ons);
+    println!("p2p_port = {:?}", p2p_port);
     println!("Public key for server = {:?} ", keypair.public());
 
     let tracker = TrackerServer::new(tracker_address.to_string(), tracker_port).await;
 
     /*  p2p bootstrap server */
-    let mut p2p_bootstrap_server = BootstrapServer::new(keypair, listen_ons).await.unwrap();
+    let mut p2p_bootstrap_server = BootstrapServer::new(keypair, listen_ons, p2p_port).await.unwrap();
     let data_connection = p2p_bootstrap_server.data_connection();
     select! {
         res = tracker.run(data_connection) => match res {

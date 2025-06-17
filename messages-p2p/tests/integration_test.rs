@@ -19,7 +19,7 @@ pub fn run_relay_server() -> JoinHandle<()> {
             "/ip4/127.0.0.1/tcp/34291".to_string(),
             "/ip4/0.0.0.0/tcp/34291".to_string(),
         ];
-        match BootstrapServer::new(identity::Keypair::generate_ed25519(), listen_ons).await {
+        match BootstrapServer::new(identity::Keypair::generate_ed25519(), listen_ons, 34291).await {
             Ok(mut server) => {
                 if let Err(e) = server.run().await {
                     eprintln!("Server run failed: {e:?}");

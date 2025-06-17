@@ -21,6 +21,7 @@ use protocol_p2p::MessageHandler;
 use rand::Rng;
 use std::str::FromStr;
 use std::sync::Arc;
+use libp2p::multiaddr::Protocol;
 use tokio::sync::{mpsc, Mutex};
 
 const BUFFER_SIZE: usize = 32;
@@ -87,9 +88,10 @@ pub fn run_node() -> anyhow::Result<Arc<Mutex<ClientNode<SimpleClientHandler>>>>
 
 impl<H: MessageHandler> ClientNode<H> {
     pub fn from_config(node_config: Config, handler: H) -> anyhow::Result<Self> {
-        // bootstrap info
-        let server_peer_id: PeerId = node_config.bootstrap.peer_id.parse()?;
-        let server_addr: Multiaddr = node_config.bootstrap.address.parse()?;
+        // bootstrap info/
+       let server_peer_id: PeerId = node_config.bootstrap.peer_id.parse()?;
+       let server_addr: Multiaddr = node_config.bootstrap.address.parse()?;
+
 
         log::info!("Server node config: ");
         print_config(&server_peer_id, Some(&server_addr), None);
@@ -113,6 +115,8 @@ impl<H: MessageHandler> ClientNode<H> {
             })
         };
 
+
+
         let mut swarm = libp2p::SwarmBuilder::with_existing_identity(client_keypair.clone())
             .with_tokio()
             .with_tcp(
@@ -123,19 +127,19 @@ impl<H: MessageHandler> ClientNode<H> {
             .with_relay_client(noise::Config::new, yamux::Config::default)?
             .with_behaviour(behaviour)?
             .build();
+            swarm.dial(server_addr.clone())?;
+            log::info!("🔌 Trying to connect to relay server at: {}", server_addr);
 
-        swarm
-            .behaviour_mut()
-            .kademlia
-            .add_address(&server_peer_id, server_addr.clone());
-        swarm.dial(server_addr.clone())?;
-        let relay_reservation_addr = server_addr
-            .clone()
-            .with(libp2p::core::multiaddr::Protocol::P2pCircuit);
-        log::info!("🚀 Dialing relay reservation: {}", relay_reservation_addr);
-        swarm.dial(relay_reservation_addr)?;
-
-        swarm.behaviour_mut().kademlia.bootstrap()?;
+            swarm.behaviour_mut().kademlia.add_address(&server_peer_id, server_addr.clone());
+    
+            let relay_reservation_addr = server_addr
+                .clone()
+                .with(Protocol::P2pCircuit);
+            log::info!("🚀 Dialing relay reservation: {}", relay_reservation_addr);
+            swarm.dial(relay_reservation_addr)?;
+    
+            // Running bootstrap kadmelia
+            swarm.behaviour_mut().kademlia.bootstrap()?;
 
         let (tx, rx) = mpsc::channel::<ChatCommand>(BUFFER_SIZE); // save tx if needed outside
 
