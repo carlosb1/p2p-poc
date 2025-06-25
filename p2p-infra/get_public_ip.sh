@@ -38,5 +38,5 @@ PUBLIC_IP=$($aws ec2 describe-network-interfaces \
   --output text)
 
 echo "🌍 Public IP: $PUBLIC_IP"
-echo "Tracker address=http://52.51.213.92:3000/tracker"
+echo "Tracker address=http://$PUBLIC_IP:3000/tracker"
 

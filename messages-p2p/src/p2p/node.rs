@@ -5,6 +5,7 @@ use crate::p2p::behaviours::{
 use crate::p2p::behaviours::{OneToOneRequest, OneToOneResponse};
 use crate::p2p::config::{load_config, print_config, Config, DEFAULT_TOPIC};
 use futures::StreamExt;
+use libp2p::multiaddr::Protocol;
 use libp2p::request_response::json::Behaviour as JsonBehaviour;
 use libp2p::{
     gossipsub::{self, IdentTopic as Topic}, identity,
@@ -21,10 +22,7 @@ use protocol_p2p::MessageHandler;
 use rand::Rng;
 use std::str::FromStr;
 use std::sync::Arc;
-use libp2p::multiaddr::Protocol;
 use tokio::sync::{mpsc, Mutex};
-
-const BUFFER_SIZE: usize = 32;
 
 #[derive(NetworkBehaviour)]
 pub struct NodeBehaviour {
@@ -35,7 +33,7 @@ pub struct NodeBehaviour {
     pub identify: identify::Behaviour,
 }
 
-pub struct ClientNode<H: MessageHandler> {
+pub struct NetworkClientNode<H: MessageHandler> {
     peer_id: PeerId,
     swarm: Swarm<NodeBehaviour>,
     command_rx: mpsc::Receiver<ChatCommand>,
@@ -67,11 +65,16 @@ impl MessageHandler for SimpleClientHandler {
     }
 }
 
-pub fn run_node() -> anyhow::Result<Arc<Mutex<ClientNode<SimpleClientHandler>>>> {
+pub fn run_node() -> anyhow::Result<Arc<Mutex<NetworkClientNode<SimpleClientHandler>>>> {
     let handler = SimpleClientHandler;
     let config = load_config(None)?;
 
-    let node = Arc::new(Mutex::new(ClientNode::new(config, handler)?));
+    let (tx, rx) = mpsc::channel::<ChatCommand>(32); // save tx if needed outside    
+    let node = Arc::new(Mutex::new(NetworkClientNode::new(
+        &config,
+        handler,
+        (tx, rx),
+    )?));
 
     // Spawn the background node task
     let node_runner = node.clone();
@@ -86,12 +89,15 @@ pub fn run_node() -> anyhow::Result<Arc<Mutex<ClientNode<SimpleClientHandler>>>>
     Ok(node.clone())
 }
 
-impl<H: MessageHandler> ClientNode<H> {
-    pub fn from_config(node_config: Config, handler: H) -> anyhow::Result<Self> {
+impl<H: MessageHandler> NetworkClientNode<H> {
+    pub fn from_config(
+        node_config: &Config,
+        handler: H,
+        channel: (mpsc::Sender<ChatCommand>, mpsc::Receiver<ChatCommand>),
+    ) -> anyhow::Result<Self> {
         // bootstrap info/
-       let server_peer_id: PeerId = node_config.bootstrap.peer_id.parse()?;
-       let server_addr: Multiaddr = node_config.bootstrap.address.parse()?;
-
+        let server_peer_id: PeerId = node_config.bootstrap.peer_id.parse()?;
+        let server_addr: Multiaddr = node_config.bootstrap.address.parse()?;
 
         log::info!("Server node config: ");
         print_config(&server_peer_id, Some(&server_addr), None);
@@ -115,8 +121,6 @@ impl<H: MessageHandler> ClientNode<H> {
             })
         };
 
-
-
         let mut swarm = libp2p::SwarmBuilder::with_existing_identity(client_keypair.clone())
             .with_tokio()
             .with_tcp(
@@ -127,37 +131,45 @@ impl<H: MessageHandler> ClientNode<H> {
             .with_relay_client(noise::Config::new, yamux::Config::default)?
             .with_behaviour(behaviour)?
             .build();
-            swarm.dial(server_addr.clone())?;
-            log::info!("🔌 Trying to connect to relay server at: {}", server_addr);
+        swarm.dial(server_addr.clone())?;
+        log::info!("🔌 Trying to connect to relay server at: {}", server_addr);
 
-            swarm.behaviour_mut().kademlia.add_address(&server_peer_id, server_addr.clone());
-    
-            let relay_reservation_addr = server_addr
-                .clone()
-                .with(Protocol::P2pCircuit);
-            log::info!("🚀 Dialing relay reservation: {}", relay_reservation_addr);
-            swarm.dial(relay_reservation_addr)?;
-    
-            // Running bootstrap kadmelia
-            swarm.behaviour_mut().kademlia.bootstrap()?;
+        swarm
+            .behaviour_mut()
+            .kademlia
+            .add_address(&server_peer_id, server_addr.clone());
 
-        let (tx, rx) = mpsc::channel::<ChatCommand>(BUFFER_SIZE); // save tx if needed outside
+        // one to one with relay with the client, ti needs dst peer id
+        // let relay_reservation_addr = server_addr.clone().with(Protocol::P2pCircuit);
+        // log::info!("🚀 Dialing relay reservation: {}", relay_reservation_addr);
+        // swarm.dial(relay_reservation_addr)?;
+
+        // Running bootstrap kadmelia
+        swarm.behaviour_mut().kademlia.bootstrap()?;
 
         Ok(Self {
             peer_id: client_peer_id,
             swarm,
-            command_rx: rx,
-            command_tx: tx.clone(),
+            command_rx: channel.1,
+            command_tx: channel.0.clone(),
             handler,
         })
     }
 
-    pub fn from_config_path(path: String, handler: H) -> anyhow::Result<Self> {
+    pub fn from_config_path(
+        path: String,
+        handler: H,
+        channel: (mpsc::Sender<ChatCommand>, mpsc::Receiver<ChatCommand>),
+    ) -> anyhow::Result<Self> {
         let node_config = load_config(Some(path))?;
-        Self::from_config(node_config, handler)
+        Self::from_config(&node_config, handler, channel)
     }
-    pub fn new(node_config: Config, handler: H) -> anyhow::Result<Self> {
-        Self::from_config(node_config, handler)
+    pub fn new(
+        node_config: &Config,
+        handler: H,
+        channel: (mpsc::Sender<ChatCommand>, mpsc::Receiver<ChatCommand>),
+    ) -> anyhow::Result<Self> {
+        Self::from_config(node_config, handler, channel)
     }
 
     pub fn command_sender(&self) -> mpsc::Sender<ChatCommand> {

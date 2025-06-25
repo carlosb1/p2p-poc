@@ -255,7 +255,7 @@ pub fn insert_and_update_status_vote(
     Ok(())
 }
 
-pub fn get_status_vote(db: &sled::Db, key: &String) -> Option<Votation> {
+pub fn get_status_vote(db: &sled::Db, key: &str) -> Option<Votation> {
     db.get(key)
         .ok()?
         .and_then(|value| { serde_json::from_slice::<Votation>(&value).ok() }.or(None))

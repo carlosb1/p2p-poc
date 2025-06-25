@@ -4,6 +4,7 @@ use std::time::Duration;
 use anyhow::anyhow;
 use libp2p::identity::Keypair;
 use libp2p::PeerId;
+use serde::{Deserialize, Serialize};
 use sled::Db;
 use tokio::sync::mpsc::Sender;
 use tokio::sync::Mutex;
@@ -17,7 +18,7 @@ use crate::{
     db, DEFAULT_REPUTATION, MEMBERS_FOR_CONSENSUS, MIN_REPUTATION_THRESHOLD, TIMEOUT_SECS,
 };
 
-pub struct LinkClient {
+pub struct ValidatorClient {
     peer_id: PeerId,
     command_tx: Sender<ChatCommand>,
     pub inner_handler: Arc<Mutex<dyn MessageHandler + Send + Sync>>,
@@ -26,12 +27,12 @@ pub struct LinkClient {
     pub content_to_evaluate: Mutex<Vec<(String, String, String, Duration)>>,
 }
 
-impl LinkClient {
+impl ValidatorClient {
     pub fn new(peer_id: PeerId, tx: Sender<ChatCommand>, db: Arc<Db>, keypair: Keypair) -> Self {
-        LinkClient {
+        ValidatorClient {
             peer_id,
             command_tx: tx,
-            inner_handler: Arc::new(Mutex::new(crate::handler::LinkHandler::new(
+            inner_handler: Arc::new(Mutex::new(crate::handler::ValidatorHandler::new(
                 peer_id.clone(),
                 db.clone(),
             ))),
@@ -115,6 +116,32 @@ impl LinkClient {
             .send(ChatCommand::Publish(topic, serde_json::to_vec(message)?))
             .await?;
         Ok(())
+    }
+
+    pub async fn get_content_to_evaluate(&self) -> Vec<(String, String, String, Duration)> {
+        //key, topic, content, duration
+        let content_to_evaluate = self.content_to_evaluate.lock().await;
+        content_to_evaluate.clone()
+    }
+
+    pub fn get_voters(&self, key: &str, topic: &str) -> anyhow::Result<Vec<String>> {
+        db::get_voters(&self.db, &key, &topic)
+    }
+
+    pub fn get_reputation(&self, peer_id: &str, topic: &str) -> anyhow::Result<f32> {
+        db::get_reputation(&self.db, topic, peer_id).ok_or(anyhow!("topic not found"))
+    }
+    pub fn get_reputations(&self, topic: &str) -> Vec<(String, f32)> {
+        db::get_reputations(&self.db, topic)
+    }
+
+    pub fn all_content(&self) {
+        db::get_contents(&self.db);
+    }
+
+    pub fn get_status_vote(&self, key: &str) -> Option<String> {
+        let votation = db::get_status_vote(&self.db, key);
+        votation.and_then(|vote| serde_json::to_string(&vote).ok())
     }
 
     pub async fn wait_for_validators(&self) -> anyhow::Result<()> {

@@ -1,4 +1,5 @@
 pub use protocol::MessageHandler;
+pub use sled::Db;
 
 pub mod client;
 pub mod handler;

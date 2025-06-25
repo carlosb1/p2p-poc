@@ -7,21 +7,22 @@ use crate::db::{DataContent, Votation};
 use crate::models::messages::ContentMessage;
 use crate::{db, MessageHandler, DEFAULT_REPUTATION, INCR_REPUTATION, THRESHOLD_APPROVE};
 
-pub struct LinkHandler {
+pub struct ValidatorHandler {
     peer_id: PeerId,
     db: Arc<Db>,
 }
 
-impl LinkHandler {
+impl ValidatorHandler {
     pub fn new(peer_id: PeerId, db: Arc<Db>) -> Self {
-        LinkHandler { peer_id, db }
+        ValidatorHandler { peer_id, db }
     }
 }
 
-impl MessageHandler for LinkHandler {
+impl MessageHandler for ValidatorHandler {
     fn handle_message(&mut self, source_peer: PeerId, data: &[u8], topic: &str) -> Option<Vec<u8>> {
         log::info!(
-            "Received message from {}: {:?}",
+            "{:?} - Received message from {}: {:?}",
+            self.peer_id.clone(),
             source_peer,
             String::from_utf8_lossy(data)
         );

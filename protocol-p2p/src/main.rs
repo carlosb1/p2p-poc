@@ -5,7 +5,7 @@ use libp2p::identity;
 use tokio::sync::{mpsc, Mutex};
 
 use messages_types::ChatCommand;
-use protocol_p2p::client::LinkClient;
+use protocol_p2p::client::ValidatorClient;
 use protocol_p2p::models::messages::ContentMessage;
 use protocol_p2p::models::messages::Vote;
 
@@ -86,7 +86,7 @@ async fn main() {
         server_clone.run().await;
     });
 
-    let mut clients: Vec<Arc<LinkClient>> = Vec::new();
+    let mut clients: Vec<Arc<ValidatorClient>> = Vec::new();
     let mut created_peer_ids = Vec::new();
 
     // Set up 6 clients
@@ -99,7 +99,7 @@ async fn main() {
         let peer_id = keypair.public().to_peer_id();
         let db = Arc::new(init_db(&format!("peer_{i}")).unwrap());
         db_peers.push(db.clone());
-        let client = Arc::new(LinkClient::new(
+        let client = Arc::new(ValidatorClient::new(
             peer_id.clone(),
             cmd_cloned_tx,
             db.clone(),
@@ -153,7 +153,7 @@ async fn main() {
     let db = Arc::new(init_db(&format!("myself_peer")).unwrap());
 
     log::info!("Myself peer ID: {}", peer_id.to_string());
-    let myself = Arc::new(LinkClient::new(
+    let myself = Arc::new(ValidatorClient::new(
         peer_id.clone(),
         cmd_tx.clone(),
         db.clone(),

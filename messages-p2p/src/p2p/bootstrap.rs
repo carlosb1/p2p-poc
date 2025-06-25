@@ -64,11 +64,9 @@ impl BootstrapServer {
             .build();
 
         let address = reqwest::get("http://checkip.amazonaws.com")
-            .await
-            .unwrap()
+            .await?
             .text()
-            .await
-            .unwrap()
+            .await?
             .trim()
             .to_string();
         let external_multi_address = format!("/ip4/{}/tcp/{}", address, p2p_port);
@@ -102,8 +100,8 @@ impl BootstrapServer {
         }
 
         /* checking IP */
-
         let manual_address = self.external_multi_address.parse::<Multiaddr>()?;
+        log::debug!("listen on: {:?}", self.listen_ons);
         log::debug!("my external public IP: {}", manual_address);
         self.swarm.add_external_address(manual_address);
 
@@ -111,7 +109,7 @@ impl BootstrapServer {
             match self.swarm.select_next_some().await {
                 SwarmEvent::NewListenAddr { address, .. } => {
                     log::debug!("Listening on {address:?} and saving server config");
-                    save_config(&self.peer_id, address)?;
+                    //save_config(&self.peer_id, address)?;
                 }
                 SwarmEvent::Behaviour(BootstrapNodeBehaviourEvent::Relay(event)) => {
                     log::debug!("<UNK> Relay event: {event:?}");
@@ -160,7 +158,7 @@ impl BootstrapServer {
                             for peer in providers {
                                 log::debug!(
                                     "Peer {peer:?} provides key {:?}",
-                                    std::str::from_utf8(key.as_ref()).unwrap()
+                                    std::str::from_utf8(key.as_ref())?
                                 );
                             }
                         }

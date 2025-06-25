@@ -1,4 +1,4 @@
-use messages_p2p::p2p::node::ClientNode;
+use messages_p2p::p2p::node::NetworkClientNode;
 use messages_p2p::PeerId;
 use messages_types::messages::ChatCommand;
 use protocol_p2p::MessageHandler;
@@ -87,7 +87,8 @@ pub fn start(server_address: String, peer_id: String, username: String) {
             let rt = Runtime::new().expect("Failed to create Tokio runtime");
             rt.block_on(async move {
                 log::debug!("Setting blocking code and node tx");
-                let mut node = ClientNode::new(config, handler).expect("Failed to create node");
+                let (tx, rx) = mpsc::channel::<ChatCommand>(32);
+                let mut node = NetworkClientNode::new(&config, handler, (tx, rx)).expect("Failed to create node");
                 if NODE_TX.get().is_none() {
                     NODE_TX
                         .set(node.command_sender())
