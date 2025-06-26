@@ -12,7 +12,7 @@ use tokio::time::sleep;
 
 use messages_types::ChatCommand;
 
-use crate::models::messages::{ContentMessage, Vote};
+use crate::models::messages::{ContentMessage, Vote, DEFAULT_TOPIC};
 use crate::protocol::MessageHandler;
 use crate::{
     db, DEFAULT_REPUTATION, MEMBERS_FOR_CONSENSUS, MIN_REPUTATION_THRESHOLD, TIMEOUT_SECS,
@@ -90,6 +90,19 @@ impl ValidatorClient {
         self.db.clone()
     }
 
+    pub async fn remote_new_topic(&self, topic: &str) -> anyhow::Result<()> {
+        self.command_tx
+            .send(ChatCommand::Publish(
+                DEFAULT_TOPIC.to_string(),
+                serde_json::to_vec(&ContentMessage::RegisterTopic {
+                    topic: topic.to_string(),
+                })?,
+            ))
+            .await
+            .map_err(|e| anyhow!("Failed to send vote: {}", e))?;
+        Ok(())
+    }
+
     pub async fn register_topic(&self, topic: &str) -> anyhow::Result<()> {
         self.command_tx
             .send(ChatCommand::Subscribe(topic.to_string()))
@@ -149,13 +162,7 @@ impl ValidatorClient {
         let start = tokio::time::Instant::now();
 
         loop {
-            log::info!("!!!!Listening for content to evaluate...");
-
             let mut content_to_evaluate = self.content_to_evaluate.lock().await;
-
-            if content_to_evaluate.is_empty() {
-                log::info!("No content to evaluate, waiting for requests...");
-            }
 
             let mut index = 0;
             while index < content_to_evaluate.len() {
@@ -164,16 +171,21 @@ impl ValidatorClient {
                     .ok_or(anyhow!("No request to validate at index {}", index))?;
                 let (key, topic, content, timeout) = req_to_validate;
                 log::info!(
-                    "Checking content to evaluate: key={}, topic={}, content={}",
+                    "Checking content to evaluate: key={}, topic={}, content={} timeout={:?}",
                     key,
                     topic,
-                    content
+                    content,
+                    timeout
                 );
+
+                log::debug!("start elapsed: {:?}", start.elapsed());
+
                 if start.elapsed() >= *timeout {
                     content_to_evaluate.remove(index);
                     //                    index+= 1; // increment index to check next content
                     continue;
                 }
+
                 /* we want to receive all the possible voters, f32 is the reputation */
                 let mut filtered_votes: Vec<(String, f32)> = Vec::new();
                 for possible_voter_peer_id in db::get_voters(&self.db, &key, &topic)? {

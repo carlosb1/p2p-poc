@@ -12,13 +12,10 @@ use tokio::{select, signal};
 pub mod p2p;
 
 static DEFAULT_LISTENS_ON: Lazy<Vec<String>> = Lazy::new(|| {
-    vec![
-        "/ip4/127.0.0.1/tcp/15000",
-        "/ip4/0.0.0.0/tcp/15000",
-    ]
-    .into_iter()
-    .map(String::from)
-    .collect()
+    vec!["/ip4/127.0.0.1/tcp/15000", "/ip4/0.0.0.0/tcp/15000"]
+        .into_iter()
+        .map(String::from)
+        .collect()
 });
 
 pub fn init_logging() {
@@ -118,7 +115,9 @@ async fn main() {
     let tracker = TrackerServer::new(tracker_address.to_string(), tracker_port).await;
 
     /*  p2p bootstrap server */
-    let mut p2p_bootstrap_server = BootstrapServer::new(keypair, listen_ons, p2p_port).await.unwrap();
+    let mut p2p_bootstrap_server = BootstrapServer::new(keypair, listen_ons, vec![], p2p_port)
+        .await
+        .unwrap();
     let data_connection = p2p_bootstrap_server.data_connection();
     select! {
         res = tracker.run(data_connection) => match res {

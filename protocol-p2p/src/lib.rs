@@ -10,7 +10,7 @@ pub mod db;
 
 const DEFAULT_REPUTATION: f32 = 90.0;
 
-const TIMEOUT_SECS: u64 = 10;
+const TIMEOUT_SECS: u64 = 3600;
 const MEMBERS_FOR_CONSENSUS: usize = 5;
 const MIN_REPUTATION_THRESHOLD: f32 = 80.0;
 

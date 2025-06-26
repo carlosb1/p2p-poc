@@ -1,7 +1,5 @@
-use libp2p::gossipsub::IdentTopic;
 use libp2p::identity::Keypair;
 use libp2p::{Multiaddr, PeerId};
-use once_cell::sync::Lazy;
 use serde::{Deserialize, Serialize};
 use std::fs;
 use tokio::io;
@@ -17,7 +15,6 @@ pub struct BootstrapConfig {
     pub address: String,
 }
 
-pub static DEFAULT_TOPIC: Lazy<IdentTopic> = Lazy::new(|| IdentTopic::new("chat-room"));
 const DEFAULT_CONFIG: &str = "temp_config.toml";
 
 pub fn save_config(peer_id: &PeerId, address: Multiaddr) -> anyhow::Result<()> {
@@ -35,8 +32,8 @@ pub fn save_config(peer_id: &PeerId, address: Multiaddr) -> anyhow::Result<()> {
 pub fn load_config(path: Option<String>) -> anyhow::Result<Config> {
     match path {
         Some(path) => {
-            let node_config: Config = toml::from_str(fs::read_to_string(path)?.as_str())
-                .map_err(io::Error::other)?;
+            let node_config: Config =
+                toml::from_str(fs::read_to_string(path)?.as_str()).map_err(io::Error::other)?;
             Ok(node_config)
         }
         None => {

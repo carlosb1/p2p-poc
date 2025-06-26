@@ -12,8 +12,12 @@ pub mod db {
 pub mod messages {
     use base64::engine::general_purpose;
     use base64::Engine;
+    use libp2p::gossipsub::IdentTopic;
     use libp2p::identity::Keypair;
+    use once_cell::sync::Lazy;
     use serde::{Deserialize, Serialize};
+
+    pub static DEFAULT_TOPIC: Lazy<IdentTopic> = Lazy::new(|| IdentTopic::new("chat-room"));
 
     #[derive(Debug, Serialize, Deserialize)]
     pub enum Vote {
@@ -48,6 +52,9 @@ pub mod messages {
             id_votation: String,
             content: String,
             approved: bool,
+        },
+        RegisterTopic {
+            topic: String,
         },
     }
 

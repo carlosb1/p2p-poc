@@ -3,9 +3,8 @@ use crate::p2p::behaviours::{
     build_request_response_behaviour,
 };
 use crate::p2p::behaviours::{OneToOneRequest, OneToOneResponse};
-use crate::p2p::config::{load_config, print_config, Config, DEFAULT_TOPIC};
+use crate::p2p::config::{load_config, print_config, Config};
 use futures::StreamExt;
-use libp2p::multiaddr::Protocol;
 use libp2p::request_response::json::Behaviour as JsonBehaviour;
 use libp2p::{
     gossipsub::{self, IdentTopic as Topic}, identity,
@@ -18,6 +17,7 @@ use libp2p::{
 };
 use libp2p::{identify, relay};
 use messages_types::ChatCommand;
+use protocol_p2p::models::messages::DEFAULT_TOPIC;
 use protocol_p2p::MessageHandler;
 use rand::Rng;
 use std::str::FromStr;
@@ -69,8 +69,10 @@ pub fn run_node() -> anyhow::Result<Arc<Mutex<NetworkClientNode<SimpleClientHand
     let handler = SimpleClientHandler;
     let config = load_config(None)?;
 
-    let (tx, rx) = mpsc::channel::<ChatCommand>(32); // save tx if needed outside    
+    let keypair = identity::Keypair::generate_ed25519();
+    let (tx, rx) = mpsc::channel::<ChatCommand>(32); // save tx if needed outside
     let node = Arc::new(Mutex::new(NetworkClientNode::new(
+        keypair,
         &config,
         handler,
         (tx, rx),
@@ -91,6 +93,7 @@ pub fn run_node() -> anyhow::Result<Arc<Mutex<NetworkClientNode<SimpleClientHand
 
 impl<H: MessageHandler> NetworkClientNode<H> {
     pub fn from_config(
+        client_keypair: identity::Keypair,
         node_config: &Config,
         handler: H,
         channel: (mpsc::Sender<ChatCommand>, mpsc::Receiver<ChatCommand>),
@@ -102,8 +105,6 @@ impl<H: MessageHandler> NetworkClientNode<H> {
         log::info!("Server node config: ");
         print_config(&server_peer_id, Some(&server_addr), None);
 
-        // client identity
-        let client_keypair = identity::Keypair::generate_ed25519();
         let client_peer_id = client_keypair.public().to_peer_id();
 
         let mut gossipsub = build_gossipsub_behaviour(&client_keypair)?;
@@ -157,19 +158,21 @@ impl<H: MessageHandler> NetworkClientNode<H> {
     }
 
     pub fn from_config_path(
+        keypair: identity::Keypair,
         path: String,
         handler: H,
         channel: (mpsc::Sender<ChatCommand>, mpsc::Receiver<ChatCommand>),
     ) -> anyhow::Result<Self> {
         let node_config = load_config(Some(path))?;
-        Self::from_config(&node_config, handler, channel)
+        Self::from_config(keypair, &node_config, handler, channel)
     }
     pub fn new(
+        keypair: identity::Keypair,
         node_config: &Config,
         handler: H,
         channel: (mpsc::Sender<ChatCommand>, mpsc::Receiver<ChatCommand>),
     ) -> anyhow::Result<Self> {
-        Self::from_config(node_config, handler, channel)
+        Self::from_config(keypair, node_config, handler, channel)
     }
 
     pub fn command_sender(&self) -> mpsc::Sender<ChatCommand> {

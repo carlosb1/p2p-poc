@@ -3022,6 +3022,7 @@ dependencies = [
  "libp2p",
  "log",
  "messages-types",
+ "once_cell",
  "serde",
  "serde_json",
  "sled",

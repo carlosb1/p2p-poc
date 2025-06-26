@@ -31,6 +31,9 @@ impl MessageHandler for ValidatorHandler {
 
         if let Ok(res) = serde_json::from_slice(data) {
             match res {
+                ContentMessage::RegisterTopic { topic } => {
+                    log::info!("New topic {:?}", topic);
+                }
                 ContentMessage::Interested {
                     content,
                     id_votation,
@@ -45,7 +48,11 @@ impl MessageHandler for ValidatorHandler {
                 }
                 ContentMessage::InterestedResponse { id_votation } => {
                     // interested voters
-                    log::info!("Received response for votation: {}", id_votation);
+                    log::info!(
+                        "Received response for votation: {} from {}",
+                        id_votation,
+                        source_peer.to_string()
+                    );
                     db::store_voter(&db, &id_votation, source_peer.to_string().as_str(), topic)
                         .ok()?; /*
                     convert result to option
@@ -70,7 +77,7 @@ impl MessageHandler for ValidatorHandler {
                         "pending".to_string(),
                         leader_peer_id.clone(),
                         "role_voter".to_string(),
-                        vec![(my_self_str_peer_id.clone(), None)],
+                        //         votes_id: voters_peer_id,
                     );
                     if leader_peer_id == my_self_str_peer_id {
                         votation.leader_id = my_self_str_peer_id.clone();
@@ -93,10 +100,12 @@ impl MessageHandler for ValidatorHandler {
 
                     /* are you the leader?  */
                     log::info!(
-                        "leader_id={:?}, my_self_str_peer_id={:?}",
+                        "leader_id={:?}, my_self_str_peer_id={:?} source_peer={:?}",
                         votation.leader_id,
-                        self.peer_id.to_string()
+                        self.peer_id.to_string(),
+                        source_peer.to_string()
                     );
+
                     if votation.leader_id != self.peer_id.to_string() {
                         return None;
                     }

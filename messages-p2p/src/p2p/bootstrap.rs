@@ -2,14 +2,14 @@ use crate::p2p::behaviours::{
     build_gossipsub_behaviour, build_identify_behaviour, build_kademlia_behaviour, build_relay_behaviour,
     build_request_response_behaviour, OneToOneRequest, OneToOneResponse,
 };
-use crate::p2p::config;
-use crate::p2p::config::save_config;
 use futures::StreamExt;
+use libp2p::gossipsub::IdentTopic;
 use libp2p::identity::Keypair;
 use libp2p::kad::store::MemoryStore;
 use libp2p::request_response::json::Behaviour as JsonBehaviour;
 use libp2p::swarm::{NetworkBehaviour, SwarmEvent};
 use libp2p::{gossipsub, identify, kad, noise, relay, tcp, yamux, Multiaddr, PeerId, Swarm};
+use protocol_p2p::models::messages::{ContentMessage, DEFAULT_TOPIC};
 
 #[derive(NetworkBehaviour)]
 struct BootstrapNodeBehaviour {
@@ -33,6 +33,7 @@ impl BootstrapServer {
     pub async fn new(
         keypair: Keypair,
         listen_ons: Vec<String>,
+        topics: Vec<String>,
         p2p_port: i32,
     ) -> anyhow::Result<Self> {
         let peer_id = keypair.public().to_peer_id();
@@ -41,8 +42,12 @@ impl BootstrapServer {
 
         // Build behaviours
         let mut gossipsub = build_gossipsub_behaviour(&keypair)?;
-        gossipsub.subscribe(&config::DEFAULT_TOPIC)?;
+        gossipsub.subscribe(&DEFAULT_TOPIC)?;
 
+        for topic in topics {
+            log::info!("Subscribing to topic={:?}", topic);
+            gossipsub.subscribe(&IdentTopic::new(topic.clone()))?;
+        }
         let behaviour = |key: &Keypair| -> BootstrapNodeBehaviour {
             BootstrapNodeBehaviour {
                 kademlia: build_kademlia_behaviour(key),
@@ -140,6 +145,21 @@ impl BootstrapServer {
                         "Server: Got message: '{}' with id: {id} from peer: {peer_id}",
                         String::from_utf8_lossy(&message.data),
                     );
+
+                    //parsing message
+
+                    if let Ok(res) = serde_json::from_slice::<ContentMessage>(&message.data) {
+                        log::debug!("Got message from peer: {res:?}");
+                        if let ContentMessage::RegisterTopic { topic } = res {
+                            log::debug!("Registering topic: {topic:?}");
+                            let subscribed = self
+                                .swarm
+                                .behaviour_mut()
+                                .gossipsub
+                                .subscribe(&IdentTopic::new(topic))?;
+                            log::debug!("Result topic subscribed: {subscribed:?}");
+                        }
+                    }
                 }
 
                 SwarmEvent::Behaviour(BootstrapNodeBehaviourEvent::Kademlia(
