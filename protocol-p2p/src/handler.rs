@@ -68,7 +68,10 @@ impl MessageHandler for ValidatorHandler {
                     ttl_secs: _,
                     signature: _,
                 } => {
-                    log::info!("Received VoteLeaderRequest for votation: {}", id_votation);
+                    log::info!(
+                        "Received  VoteLeaderRequest (petition to be part of the vote) for votation: {}",
+                        id_votation
+                    );
                     /* set up a new status vote, check if you are the leader or not */
                     let my_self_str_peer_id = self.peer_id.to_string();
                     let mut votation = Votation::new(
@@ -77,7 +80,10 @@ impl MessageHandler for ValidatorHandler {
                         "pending".to_string(),
                         leader_peer_id.clone(),
                         "role_voter".to_string(),
-                        //         votes_id: voters_peer_id,
+                        voters_peer_id
+                            .iter()
+                            .map(|id| (id.to_string(), None))
+                            .collect(),
                     );
                     if leader_peer_id == my_self_str_peer_id {
                         votation.leader_id = my_self_str_peer_id.clone();
@@ -106,10 +112,12 @@ impl MessageHandler for ValidatorHandler {
                         source_peer.to_string()
                     );
 
+                    // I am the leader?
                     if votation.leader_id != self.peer_id.to_string() {
                         return None;
                     }
 
+                    // are you part of the voters?
                     let Some(entry) = votation
                         .votes_id
                         .iter_mut()
@@ -118,6 +126,7 @@ impl MessageHandler for ValidatorHandler {
                         return None;
                     };
 
+                    // did you vote before?
                     if entry.1.is_some() {
                         return None;
                     }

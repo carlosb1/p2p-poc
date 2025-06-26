@@ -198,6 +198,7 @@ pub fn include_new_validated_content(db: &Db, data_content: &DataContent) -> any
     let key = format!("content/{id_votation}");
     let value = serde_json::to_vec(data_content).expect("Failed to serialize reputation");
     db.insert(key, value)?;
+    db.flush()?;
     Ok(())
 }
 
@@ -252,6 +253,7 @@ pub fn insert_and_update_status_vote(
 ) -> anyhow::Result<()> {
     let value = serde_json::to_string(&status_vote)?;
     db.insert(id_votation, value.into_bytes())?;
+    db.flush()?; // 🔥 muy importante
     Ok(())
 }
 
