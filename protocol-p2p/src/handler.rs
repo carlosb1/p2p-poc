@@ -89,7 +89,11 @@ impl MessageHandler for ValidatorHandler {
                         votation.leader_id = my_self_str_peer_id.clone();
                         votation.my_role = "role_leader".to_string();
                     }
-                    db::insert_and_update_status_vote(&db, id_votation.as_str(), &votation).ok()?;
+                    if db::get_status_vote(&db, id_votation.as_str()).is_none() {
+                        db::insert_and_update_status_vote(&db, id_votation.as_str(), &votation).ok()?;
+                    } else {
+                        log::warn!("Trying to insert again a votation");
+                    }
                 }
                 ContentMessage::ResultVote {
                     id_votation,
@@ -103,6 +107,8 @@ impl MessageHandler for ValidatorHandler {
                     let Some(mut votation) = db::get_status_vote(&db, &id_votation) else {
                         return None;
                     };
+
+                    log::info!("status extracted votation={:?}", votation);
 
                     /* are you the leader?  */
                     log::info!(
@@ -135,6 +141,7 @@ impl MessageHandler for ValidatorHandler {
                     let int_result = result as u8;
                     entry.1 = Some(int_result as f32);
 
+                    log::info!("status modified votation={:?}", votation);
                     db::insert_and_update_status_vote(&db, id_votation.as_str(), &votation).ok()?;
 
                     // are pending votes?

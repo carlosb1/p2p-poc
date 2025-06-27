@@ -253,11 +253,13 @@ pub fn insert_and_update_status_vote(
 ) -> anyhow::Result<()> {
     let value = serde_json::to_string(&status_vote)?;
     db.insert(id_votation, value.into_bytes())?;
-    db.flush()?; // 🔥 muy importante
+    db.flush()?;
     Ok(())
 }
 
 pub fn get_status_vote(db: &sled::Db, key: &str) -> Option<Votation> {
+
+
     db.get(key)
         .ok()?
         .and_then(|value| { serde_json::from_slice::<Votation>(&value).ok() }.or(None))
@@ -342,6 +344,32 @@ fn test_insert_and_get_status_vote() {
 
     insert_and_update_status_vote(&db, &vote.id_votation, &vote).unwrap();
     let result = get_status_vote(&db, &vote.id_votation).unwrap();
+
+    assert_eq!(result.id_votation, vote.id_votation);
+    assert_eq!(result.status, "approved");
+}
+
+#[test]
+fn test_insert_and_get_status_vote_and_update() {
+    let tmp_dir = tempfile::tempdir().unwrap();
+    let db = init_db(tmp_dir.path().to_str().unwrap()).unwrap();
+
+    let vote = Votation::new(
+        "vote_id_123".to_string(),
+        "content_xyz".to_string(),
+        "approved".to_string(),
+        "leader123".to_string(),
+        "leader".to_string(),
+        vec![("peer1".to_string(), Some(3.0))],
+    );
+
+    insert_and_update_status_vote(&db, &vote.id_votation, &vote).unwrap();
+    let mut result = get_status_vote(&db, &vote.id_votation).unwrap();
+    (*result.votes_id.get_mut(0).unwrap()).0 = "peer_modified".to_string();
+
+    insert_and_update_status_vote(&db, &result.id_votation, &result).unwrap();
+    let mut result = get_status_vote(&db, &vote.id_votation).unwrap();
+    println!("result {:?}", result);
 
     assert_eq!(result.id_votation, vote.id_votation);
     assert_eq!(result.status, "approved");

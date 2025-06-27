@@ -412,7 +412,7 @@ async fn validation_among_clients_2() {
             .add_vote(&key, &topic_to_register, Vote::Yes)
             .await
             .unwrap();
-        tokio::time::sleep(Duration::from_secs(1)).await;
+        tokio::time::sleep(Duration::from_secs(4)).await;
     }
 
     println!("✅ Waiting 10 secs");
