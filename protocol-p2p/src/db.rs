@@ -1,9 +1,12 @@
-use std::hash::{DefaultHasher, Hash, Hasher};
-
+use crate::db;
+use crate::models::messages::Vote;
+use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use serde_json;
 use sled;
-use sled::Db;
+use sled::{CompareAndSwapError, Db};
+use std::hash::{DefaultHasher, Hash, Hasher};
+use std::sync::Arc;
 
 pub fn create_key_for_voting_db(
     content_id: &str,
@@ -217,6 +220,7 @@ pub fn get_contents(db: &Db) -> Vec<DataContent> {
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct Votation {
     pub id_votation: String,
+    pub timestamp: DateTime<Utc>,
     pub content: String,
     pub status: String,
     pub leader_id: String,
@@ -235,6 +239,7 @@ impl Votation {
     ) -> Self {
         Self {
             id_votation,
+            timestamp: Utc::now(),
             content,
             status,
             leader_id,
@@ -244,25 +249,75 @@ impl Votation {
     }
 }
 
-/*  */
+pub fn get_votes(db: &Db, id_votation: &str) -> Vec<(String, Vote)> {
+    let key = format!("election/vote/{id_votation}");
+    db.scan_prefix(key)
+        .filter_map(|item| {
+            if let Ok((find_key, value)) = item {
+                let value = serde_json::from_slice::<(&str, Vote)>(&value)
+                    .ok()
+                    .map(|(s, vote)| (s.to_string(), vote));
+                value
+            } else {
+                None
+            }
+        })
+        .collect()
+}
 
-pub fn insert_and_update_status_vote(
-    db: &sled::Db,
-    id_votation: &str,
-    status_vote: &Votation,
-) -> anyhow::Result<()> {
-    let value = serde_json::to_string(&status_vote)?;
-    db.insert(id_votation, value.into_bytes())?;
-    db.flush()?;
+pub fn exists_vote(db: &Db, id_votation: &str, peer_id: &str) -> bool {
+    let key = format!("election/vote/{id_votation}/{peer_id}");
+    db.contains_key(key).is_ok()
+}
+
+pub fn add_vote(db: &Db, id_votation: &str, peer_id: &str, vote: &Vote) -> anyhow::Result<()> {
+    let key = format!("election/vote/{id_votation}/{peer_id}");
+    db.insert(
+        key.to_string(),
+        serde_json::to_vec(&(peer_id, vote.clone()))?,
+    )?;
     Ok(())
 }
 
+pub fn new_status_vote(db: &sled::Db, key: &str, votation: &Votation) -> anyhow::Result<()> {
+    let vec_new = serde_json::to_string(&votation)?.into_bytes();
+
+    match db.compare_and_swap(key, None::<Vec<u8>>, Some(vec_new))? {
+        Ok(_) => Ok(()),
+        Err(CompareAndSwapError {
+            current,
+            proposed: _,
+        }) => Err(anyhow::anyhow!(
+            "Compare-and-swap failed: current value was {:?}",
+            current
+        )),
+    }
+}
+
 pub fn get_status_vote(db: &sled::Db, key: &str) -> Option<Votation> {
-
-
     db.get(key)
         .ok()?
         .and_then(|value| { serde_json::from_slice::<Votation>(&value).ok() }.or(None))
+}
+
+pub fn compare_and_swap_status_vote(
+    db: &sled::Db,
+    key: &str,
+    old: &Votation,
+    new: &Votation,
+) -> anyhow::Result<()> {
+    let vec_old = serde_json::to_string(&old)?.into_bytes();
+    let vec_new = serde_json::to_string(&new)?.into_bytes();
+    match db.compare_and_swap(key, Some(vec_old), Some(vec_new))? {
+        Ok(_) => Ok(()),
+        Err(CompareAndSwapError {
+            current,
+            proposed: _,
+        }) => Err(anyhow::anyhow!(
+            "Compare-and-swap failed: current value was {:?}",
+            current
+        )),
+    }
 }
 
 #[test]
@@ -342,7 +397,7 @@ fn test_insert_and_get_status_vote() {
         vec![("peer1".to_string(), Some(3.0))],
     );
 
-    insert_and_update_status_vote(&db, &vote.id_votation, &vote).unwrap();
+    db::new_status_vote(&db, &vote.id_votation, &vote).unwrap();
     let result = get_status_vote(&db, &vote.id_votation).unwrap();
 
     assert_eq!(result.id_votation, vote.id_votation);
@@ -363,11 +418,11 @@ fn test_insert_and_get_status_vote_and_update() {
         vec![("peer1".to_string(), Some(3.0))],
     );
 
-    insert_and_update_status_vote(&db, &vote.id_votation, &vote).unwrap();
+    new_status_vote(&db, &vote.id_votation, &vote).unwrap();
     let mut result = get_status_vote(&db, &vote.id_votation).unwrap();
     (*result.votes_id.get_mut(0).unwrap()).0 = "peer_modified".to_string();
 
-    insert_and_update_status_vote(&db, &result.id_votation, &result).unwrap();
+    compare_and_swap_status_vote(&db, &result.id_votation, &vote, &result).unwrap();
     let mut result = get_status_vote(&db, &vote.id_votation).unwrap();
     println!("result {:?}", result);
 

@@ -1,11 +1,15 @@
-use std::sync::Arc;
-
+use crate::db::{DataContent, Votation};
+use crate::models::messages::{ContentMessage, Vote};
+use crate::{
+    db, MessageHandler, DEFAULT_REPUTATION, EXPIRY_DURATION_IN_DAYS,
+    INCR_REPUTATION, THRESHOLD_APPROVE,
+};
+use chrono::Utc;
 use libp2p::PeerId;
 use sled::Db;
-
-use crate::db::{DataContent, Votation};
-use crate::models::messages::ContentMessage;
-use crate::{db, MessageHandler, DEFAULT_REPUTATION, INCR_REPUTATION, THRESHOLD_APPROVE};
+use std::collections::HashSet;
+use std::sync::Arc;
+use tokio::task::id;
 
 pub struct ValidatorHandler {
     peer_id: PeerId,
@@ -89,8 +93,9 @@ impl MessageHandler for ValidatorHandler {
                         votation.leader_id = my_self_str_peer_id.clone();
                         votation.my_role = "role_leader".to_string();
                     }
+
                     if db::get_status_vote(&db, id_votation.as_str()).is_none() {
-                        db::insert_and_update_status_vote(&db, id_votation.as_str(), &votation).ok()?;
+                        db::new_status_vote(&db, id_votation.as_str(), &votation).ok()?;
                     } else {
                         log::warn!("Trying to insert again a votation");
                     }
@@ -104,6 +109,8 @@ impl MessageHandler for ValidatorHandler {
                     // we receive a vote result
 
                     /* are you in the votation process */
+                    let str_peer_id = source_peer.to_string();
+
                     let Some(mut votation) = db::get_status_vote(&db, &id_votation) else {
                         return None;
                     };
@@ -118,73 +125,105 @@ impl MessageHandler for ValidatorHandler {
                         source_peer.to_string()
                     );
 
-                    // I am the leader?
+                    // I am the leader? only leader can count votes
                     if votation.leader_id != self.peer_id.to_string() {
+                        log::info!(
+                            "Discarding result vote petition I am not the leader votation_leader={:?} and my id={:?}",
+                            votation,
+                            self.peer_id.to_string()
+                        );
                         return None;
                     }
 
-                    // are you part of the voters?
-                    let Some(entry) = votation
+                    if db::exists_vote(db, &id_votation.as_str(), &str_peer_id) {
+                        log::warn!(
+                            "Discarding replicated vote for  votation={} peer_id={}",
+                            id_votation,
+                            self.peer_id
+                        );
+                        return None;
+                    }
+                    if db::add_vote(db, &id_votation.as_str(), &str_peer_id, &result).is_err() {
+                        log::warn!(
+                            "It could no possible to add a vote={:?} for votation={} and peer_id={}",
+                            result,
+                            &id_votation,
+                            &str_peer_id
+                        );
+                        return None;
+                    }
+
+                    let votes_and_its_points: Vec<(String, Vote)> =
+                        db::get_votes(db, &id_votation.as_str());
+                    let recollected_votes: HashSet<String> = votes_and_its_points
+                        .iter()
+                        .map(|(x, _)| x.to_string())
+                        .collect();
+                    let expected_votes: HashSet<String> = votation
                         .votes_id
-                        .iter_mut()
-                        .find(|e| e.0 == source_peer.to_string())
-                    else {
-                        return None;
-                    };
+                        .iter()
+                        .map(|(x, _)| x.to_string())
+                        .collect();
 
-                    // did you vote before?
-                    if entry.1.is_some() {
-                        return None;
+                    /* expire votation */
+                    log::debug!("Pending for votation={:?}", votation);
+                    let expires_at = votation.timestamp + EXPIRY_DURATION_IN_DAYS;
+                    let now = Utc::now();
+                    if recollected_votes != expected_votes && now > expires_at {
+                        log::debug!("⛔ Vote expired, we are going to decrease reputation");
+
+                        let not_votes: HashSet<String> = recollected_votes
+                            .difference(&expected_votes)
+                            .cloned()
+                            .collect();
+
+                        /* update reputations */
+                        let reputations = not_votes
+                            .iter()
+                            .map(|v| (v.clone(), -INCR_REPUTATION))
+                            .collect::<Vec<(String, f32)>>();
+                        db::update_reputations(db, &topic, &reputations, DEFAULT_REPUTATION)
+                            .ok()?;
                     }
 
-                    // Check the vote
-                    let int_result = result as u8;
-                    entry.1 = Some(int_result as f32);
+                    if recollected_votes == expected_votes {
+                        /* update reputations */
+                        log::debug!("Updating reputations for all votes");
+                        let reputations = recollected_votes
+                            .iter()
+                            .map(|v| (v.clone(), INCR_REPUTATION))
+                            .collect::<Vec<(String, f32)>>();
+                        db::update_reputations(db, &topic, &reputations, DEFAULT_REPUTATION)
+                            .ok()?;
 
-                    log::info!("status modified votation={:?}", votation);
-                    db::insert_and_update_status_vote(&db, id_votation.as_str(), &votation).ok()?;
+                        // start  process to approve with all the votation
+                        let votes: f32 = votes_and_its_points
+                            .iter()
+                            .map(|(_, vote)| vote.clone() as u8 as f32)
+                            .sum();
 
-                    // are pending votes?
-                    if !votation.votes_id.iter().all(|(_, v)| v.is_some()) {
-                        //decrease reputation
+                        let total_votes = votes_and_its_points.len() as f32;
+                        let percent_accept = votes / total_votes;
+                        let approved = percent_accept >= THRESHOLD_APPROVE;
+
+                        // send the result
+                        let data = ContentMessage::IncludeNewValidatedContent {
+                            id_votation: id_votation.clone(),
+                            content: votation.content.clone(),
+                            approved,
+                        };
+
+                        // update the reputation for voters
                         let peer_ids = votation
                             .votes_id
                             .iter()
-                            .filter(|(_, v)| v.is_none())
-                            .map(|(peer_id, _)| (peer_id.clone(), -INCR_REPUTATION))
+                            .map(|(peer_id, _)| (peer_id.clone(), INCR_REPUTATION))
                             .collect::<Vec<(String, f32)>>();
-                        log::debug!("Decreasing reputation for peers: {:?}", peer_ids);
                         db::update_reputations(&db, &topic, &peer_ids, DEFAULT_REPUTATION).ok()?;
-                        return None;
+                        return Some(serde_json::to_string(&data).ok()?.into_bytes());
                     }
-
-                    // we validate the content
-                    let votes: f32 = votation
-                        .votes_id
-                        .iter()
-                        .map(|(_, vote)| vote.unwrap_or(0.0))
-                        .sum();
-                    let total_votes = votation.votes_id.len() as f32;
-
-                    let percent_accept = votes / total_votes;
-                    let approved = percent_accept >= THRESHOLD_APPROVE;
-
-                    // send the result
-                    let data = ContentMessage::IncludeNewValidatedContent {
-                        id_votation: id_votation.clone(),
-                        content: votation.content.clone(),
-                        approved,
-                    };
-
-                    // update the reputation for voters
-                    let peer_ids = votation
-                        .votes_id
-                        .iter()
-                        .map(|(peer_id, _)| (peer_id.clone(), INCR_REPUTATION))
-                        .collect::<Vec<(String, f32)>>();
-                    db::update_reputations(&db, &topic, &peer_ids, DEFAULT_REPUTATION).ok()?;
-                    return Some(serde_json::to_string(&data).ok()?.into_bytes());
                 }
+                /* we register included new validated content */
                 ContentMessage::IncludeNewValidatedContent {
                     id_votation,
                     content,

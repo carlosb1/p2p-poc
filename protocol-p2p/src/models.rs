@@ -19,7 +19,7 @@ pub mod messages {
 
     pub static DEFAULT_TOPIC: Lazy<IdentTopic> = Lazy::new(|| IdentTopic::new("chat-room"));
 
-    #[derive(Debug, Serialize, Deserialize)]
+    #[derive(Debug, Serialize, Deserialize, Clone, Copy)]
     pub enum Vote {
         Yes = 1,
         No = 0,

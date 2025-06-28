@@ -1,3 +1,4 @@
+use chrono::{Duration, TimeDelta};
 pub use protocol::MessageHandler;
 pub use sled::Db;
 
@@ -16,3 +17,5 @@ const MIN_REPUTATION_THRESHOLD: f32 = 80.0;
 
 const INCR_REPUTATION: f32 = 5.0;
 const THRESHOLD_APPROVE: f32 = 0.6;
+
+const EXPIRY_DURATION_IN_DAYS: TimeDelta = Duration::days(2);
