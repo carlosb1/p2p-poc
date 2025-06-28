@@ -265,9 +265,10 @@ pub fn get_votes(db: &Db, id_votation: &str) -> Vec<(String, Vote)> {
         .collect()
 }
 
-pub fn exists_vote(db: &Db, id_votation: &str, peer_id: &str) -> bool {
+pub fn exists_vote(db: &Db, id_votation: &str, peer_id: &str) -> anyhow::Result<bool> {
     let key = format!("election/vote/{id_votation}/{peer_id}");
-    db.contains_key(key).is_ok()
+    let exists = db.contains_key(key)?; // propagates error if any
+    Ok(exists)
 }
 
 pub fn add_vote(db: &Db, id_votation: &str, peer_id: &str, vote: &Vote) -> anyhow::Result<()> {

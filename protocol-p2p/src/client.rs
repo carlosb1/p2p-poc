@@ -111,13 +111,27 @@ impl ValidatorClient {
     }
 
     pub async fn add_vote(&self, id_votation: &str, topic: &str, vote: Vote) -> anyhow::Result<()> {
+        let Some(votation) =  db::get_status_vote(&self.db,id_votation) else {
+          log::info!("You are not included in this votation={}", id_votation);
+            return Ok(());
+        };
+
+        let data = serde_json::to_vec(&ContentMessage::ResultVote {
+            id_votation: id_votation.to_string(),
+            result: vote,
+        })?;
+
+        if (votation.leader_id == self.peer_id.to_string()) {
+            log::info!("I am the leader with id={} for votation={} can I added it locally", votation.leader_id.clone(), id_votation);
+            self.inner_handler.lock().await.handle_message(self.peer_id, &data, topic);
+            return Ok(());
+        }
+
+        log::info!("Sending a remote publish message");
         self.command_tx
             .send(ChatCommand::Publish(
                 topic.to_string(),
-                serde_json::to_vec(&ContentMessage::ResultVote {
-                    id_votation: id_votation.to_string(),
-                    result: vote,
-                })?,
+                data,
             ))
             .await
             .map_err(|e| anyhow!("Failed to send vote: {}", e))?;
@@ -233,6 +247,8 @@ impl ValidatorClient {
                     self.send(topic.to_string(), &vote_request)
                         .await
                         .expect("Failed to send client message");
+                    content_to_evaluate.remove(index); // ✅ remove it
+                    continue; // skip index++
                 }
 
                 index += 1; // checking next content to evaluate

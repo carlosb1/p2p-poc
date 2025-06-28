@@ -25,6 +25,7 @@ pub fn build_gossipsub_behaviour(
         //        .message_id_fn(message_id_fn) // content-address messages. No two messages of the same content will be propagated.
         .mesh_outbound_min(1)
         .mesh_n_low(1)
+        .allow_self_origin(true)
         .build()
         .map_err(io::Error::other)?; // Temporary hack because `build` does not return a proper `std::error::Error`.
 

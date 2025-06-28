@@ -135,7 +135,12 @@ impl MessageHandler for ValidatorHandler {
                         return None;
                     }
 
-                    if db::exists_vote(db, &id_votation.as_str(), &str_peer_id) {
+                    let Ok(exist) = db::exists_vote(db, &id_votation.as_str(), &str_peer_id) else {
+                        log::warn!("Exists vote failed");
+                        return None;
+                    };
+
+                    if exist {
                         log::warn!(
                             "Discarding replicated vote for  votation={} peer_id={}",
                             id_votation,
@@ -143,6 +148,7 @@ impl MessageHandler for ValidatorHandler {
                         );
                         return None;
                     }
+
                     if db::add_vote(db, &id_votation.as_str(), &str_peer_id, &result).is_err() {
                         log::warn!(
                             "It could no possible to add a vote={:?} for votation={} and peer_id={}",
@@ -166,11 +172,15 @@ impl MessageHandler for ValidatorHandler {
                         .collect();
 
                     /* expire votation */
-                    log::debug!("Pending for votation={:?}", votation);
+                    log::info!("Pending for votation={:?}", votation);
+                    log::info!("Recollected votes={:?}", recollected_votes);
+                    log::info!("Expected_votes votes={:?}", expected_votes);
+
+
                     let expires_at = votation.timestamp + EXPIRY_DURATION_IN_DAYS;
                     let now = Utc::now();
-                    if recollected_votes != expected_votes && now > expires_at {
-                        log::debug!("⛔ Vote expired, we are going to decrease reputation");
+                    if !expected_votes.is_subset(&recollected_votes) && now > expires_at {
+                        log::info!("⛔ Vote expired, we are going to decrease reputation");
 
                         let not_votes: HashSet<String> = recollected_votes
                             .difference(&expected_votes)
@@ -186,23 +196,27 @@ impl MessageHandler for ValidatorHandler {
                             .ok()?;
                     }
 
-                    if recollected_votes == expected_votes {
+                    if expected_votes.is_subset(&recollected_votes) {
                         /* update reputations */
-                        log::debug!("Updating reputations for all votes");
-                        let reputations = recollected_votes
+                        log::info!("Updating reputations for all votes");
+                        let reputations = expected_votes
                             .iter()
                             .map(|v| (v.clone(), INCR_REPUTATION))
                             .collect::<Vec<(String, f32)>>();
                         db::update_reputations(db, &topic, &reputations, DEFAULT_REPUTATION)
                             .ok()?;
 
+                        let filtered_votes: Vec<(String, Vote)> = votes_and_its_points
+                            .into_iter()
+                            .filter(|(peer_id, _)| expected_votes.contains(peer_id))
+                            .collect();
                         // start  process to approve with all the votation
-                        let votes: f32 = votes_and_its_points
+                        let votes: f32 = filtered_votes
                             .iter()
                             .map(|(_, vote)| vote.clone() as u8 as f32)
                             .sum();
 
-                        let total_votes = votes_and_its_points.len() as f32;
+                        let total_votes = filtered_votes.len() as f32;
                         let percent_accept = votes / total_votes;
                         let approved = percent_accept >= THRESHOLD_APPROVE;
 
