@@ -1,16 +1,15 @@
-use crate::db::{DataContent, Votation};
 use crate::models::messages::{ContentMessage, Vote};
 use crate::{
-    db, MessageHandler, DEFAULT_REPUTATION, EXPIRY_DURATION_IN_DAYS,
-    INCR_REPUTATION, THRESHOLD_APPROVE,
+    db, models, MessageHandler, DEFAULT_REPUTATION,
+    EXPIRY_DURATION_IN_DAYS, INCR_REPUTATION, THRESHOLD_APPROVE,
 };
 use chrono::Utc;
 use libp2p::PeerId;
 use sled::Db;
 use std::collections::HashSet;
 use std::sync::Arc;
-use tokio::task::id;
 
+#[derive(Debug, Clone)]
 pub struct ValidatorHandler {
     peer_id: PeerId,
     db: Arc<Db>,
@@ -78,7 +77,7 @@ impl MessageHandler for ValidatorHandler {
                     );
                     /* set up a new status vote, check if you are the leader or not */
                     let my_self_str_peer_id = self.peer_id.to_string();
-                    let mut votation = Votation::new(
+                    let mut votation = models::db::Votation::new(
                         id_votation.clone(),
                         content.clone(),
                         "pending".to_string(),
@@ -176,7 +175,6 @@ impl MessageHandler for ValidatorHandler {
                     log::info!("Recollected votes={:?}", recollected_votes);
                     log::info!("Expected_votes votes={:?}", expected_votes);
 
-
                     let expires_at = votation.timestamp + EXPIRY_DURATION_IN_DAYS;
                     let now = Utc::now();
                     if !expected_votes.is_subset(&recollected_votes) && now > expires_at {
@@ -247,7 +245,7 @@ impl MessageHandler for ValidatorHandler {
                         "Received IncludeNewValidatedContent for votation: {}",
                         id_votation
                     );
-                    let data_content = DataContent::new(id_votation, content, approved);
+                    let data_content = models::db::DataContent::new(id_votation, content, approved);
                     db::include_new_validated_content(&db, &data_content).ok()?;
                 }
             }

@@ -1,11 +1,72 @@
+use serde::{Deserialize, Serialize};
+
 pub mod db {
+    use chrono::{DateTime, Utc};
     use serde::{Deserialize, Serialize};
 
+    #[derive(Serialize, Deserialize, Debug, Clone)]
+    pub struct Votation {
+        pub id_votation: String,
+        pub timestamp: DateTime<Utc>,
+        pub content: String,
+        pub status: String,
+        pub leader_id: String,
+        pub my_role: String,
+        pub votes_id: Vec<(String, Option<f32>)>,
+    }
+
+    impl Votation {
+        pub fn new(
+            id_votation: String,
+            content: String,
+            status: String,
+            leader_id: String,
+            my_role: String,
+            votes_id: Vec<(String, Option<f32>)>,
+        ) -> Self {
+            Self {
+                id_votation,
+                timestamp: Utc::now(),
+                content,
+                status,
+                leader_id,
+                my_role,
+                votes_id,
+            }
+        }
+    }
     #[derive(Serialize, Deserialize, Debug)]
     pub enum VoteStatus {
         Pending(Vec<(String, f32)>),
         Accepted,
         Rejected,
+    }
+
+    #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
+    pub enum StateContent {
+        Approved,
+        Rejected,
+    }
+
+    #[derive(Serialize, Deserialize, Debug, Clone)]
+    pub struct DataContent {
+        pub id_votation: String,
+        pub content: String,
+        pub approved: StateContent,
+    }
+
+    impl DataContent {
+        pub fn new(id_votation: String, content: String, approved: bool) -> Self {
+            Self {
+                id_votation,
+                content,
+                approved: if approved {
+                    StateContent::Approved
+                } else {
+                    StateContent::Rejected
+                },
+            }
+        }
     }
 }
 

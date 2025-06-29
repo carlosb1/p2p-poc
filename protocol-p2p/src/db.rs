@@ -1,12 +1,12 @@
-use crate::db;
+use crate::models::db::{StateContent, Votation};
 use crate::models::messages::Vote;
-use chrono::{DateTime, Utc};
+use crate::{db, models};
+use chrono::Utc;
 use serde::{Deserialize, Serialize};
 use serde_json;
 use sled;
 use sled::{CompareAndSwapError, Db};
 use std::hash::{DefaultHasher, Hash, Hasher};
-use std::sync::Arc;
 
 pub fn create_key_for_voting_db(
     content_id: &str,
@@ -169,34 +169,10 @@ pub fn update_reputations(
     Ok(())
 }
 
-#[derive(Serialize, Deserialize, Debug, Clone)]
-pub enum StateContent {
-    Approved,
-    Rejected,
-}
-
-#[derive(Serialize, Deserialize, Debug, Clone)]
-pub struct DataContent {
-    pub id_votation: String,
-    pub content: String,
-    pub approved: StateContent,
-}
-
-impl DataContent {
-    pub fn new(id_votation: String, content: String, approved: bool) -> Self {
-        Self {
-            id_votation,
-            content,
-            approved: if approved {
-                StateContent::Approved
-            } else {
-                StateContent::Rejected
-            },
-        }
-    }
-}
-
-pub fn include_new_validated_content(db: &Db, data_content: &DataContent) -> anyhow::Result<()> {
+pub fn include_new_validated_content(
+    db: &Db,
+    data_content: &models::db::DataContent,
+) -> anyhow::Result<()> {
     let id_votation = data_content.id_votation.clone();
     let key = format!("content/{id_votation}");
     let value = serde_json::to_vec(data_content).expect("Failed to serialize reputation");
@@ -205,48 +181,16 @@ pub fn include_new_validated_content(db: &Db, data_content: &DataContent) -> any
     Ok(())
 }
 
-pub fn get_contents(db: &Db) -> Vec<DataContent> {
+pub fn get_contents(db: &Db) -> Vec<models::db::DataContent> {
     db.scan_prefix(format!("content/"))
         .filter_map(|item| {
             if let Ok((_key, value)) = item {
-                serde_json::from_slice::<DataContent>(&value).ok()
+                serde_json::from_slice::<models::db::DataContent>(&value).ok()
             } else {
                 None
             }
         })
         .collect()
-}
-
-#[derive(Serialize, Deserialize, Debug, Clone)]
-pub struct Votation {
-    pub id_votation: String,
-    pub timestamp: DateTime<Utc>,
-    pub content: String,
-    pub status: String,
-    pub leader_id: String,
-    pub my_role: String,
-    pub votes_id: Vec<(String, Option<f32>)>,
-}
-
-impl Votation {
-    pub fn new(
-        id_votation: String,
-        content: String,
-        status: String,
-        leader_id: String,
-        my_role: String,
-        votes_id: Vec<(String, Option<f32>)>,
-    ) -> Self {
-        Self {
-            id_votation,
-            timestamp: Utc::now(),
-            content,
-            status,
-            leader_id,
-            my_role,
-            votes_id,
-        }
-    }
 }
 
 pub fn get_votes(db: &Db, id_votation: &str) -> Vec<(String, Vote)> {
@@ -372,12 +316,13 @@ fn test_include_and_read_validated_content() {
     let tmp_dir = tempfile::tempdir().unwrap();
     let db = init_db(tmp_dir.path().to_str().unwrap()).unwrap();
 
-    let data = DataContent::new("vote_01".to_string(), "important_content".to_string(), true);
+    let data =
+        models::db::DataContent::new("vote_01".to_string(), "important_content".to_string(), true);
     include_new_validated_content(&db, &data).unwrap();
 
     let key = format!("/content/{}", data.id_votation);
     let raw = db.get(&key).unwrap().unwrap();
-    let decoded: DataContent = serde_json::from_slice(&raw).unwrap();
+    let decoded: models::db::DataContent = serde_json::from_slice(&raw).unwrap();
 
     assert_eq!(decoded.id_votation, "vote_01");
     assert_eq!(decoded.content, "important_content");

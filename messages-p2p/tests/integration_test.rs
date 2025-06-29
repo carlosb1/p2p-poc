@@ -1,182 +1,14 @@
 use libp2p::{identity, PeerId};
+use messages_p2p::p2p::api::APIClient;
 use messages_p2p::p2p::bootstrap::BootstrapServer;
-use messages_p2p::p2p::config::{load_config, BootstrapConfig, Config};
-use messages_p2p::p2p::node::NetworkClientNode;
 use messages_types::ChatCommand;
-use protocol_p2p::client::ValidatorClient;
-use protocol_p2p::db::init_db;
-use protocol_p2p::handler::ValidatorHandler;
+use protocol_p2p::db;
 use protocol_p2p::models::messages::Vote;
-use protocol_p2p::{db, Db};
 use rand::distr::Alphanumeric;
 use rand::{thread_rng, Rng};
-use std::sync::Arc;
-use tokio::sync::mpsc::Sender;
-use tokio::sync::{mpsc, Mutex};
+use std::str::FromStr;
 use tokio::task::JoinHandle;
 use tokio::time::{sleep, Instant};
-
-pub const BUFFER_SIZE: usize = 32;
-
-#[derive(Clone)]
-pub struct TestClient {
-    peer_id: libp2p::PeerId,
-    db: Arc<Db>,
-    validator_client: Arc<ValidatorClient>,
-    pub node: Arc<Mutex<Option<NetworkClientNode<ValidatorHandler>>>>,
-    tx: mpsc::Sender<ChatCommand>,
-}
-impl TestClient {
-    pub fn new(keypair: identity::Keypair, name_peer: Option<String>) -> anyhow::Result<Self> {
-        // load config from file
-        let config = load_config(None)?;
-        Self::inner_from_config(keypair, &config, name_peer)
-    }
-
-    pub fn from_server_params(
-        keypair: identity::Keypair,
-        name_peer: Option<String>,
-        peer_id_server: &str,
-        address: &str,
-    ) -> anyhow::Result<Self> {
-        log::debug!(
-            "name_peer={:?} peer_id_server={} address={}",
-            name_peer,
-            peer_id_server,
-            address
-        );
-        let config = Config {
-            bootstrap: BootstrapConfig {
-                peer_id: peer_id_server.to_string(),
-                address: address.to_string(),
-            },
-        };
-        Self::inner_from_config(keypair, &config, name_peer)
-    }
-
-    pub fn from_config(
-        keypair: identity::Keypair,
-        name_peer: Option<String>,
-        path: Option<String>,
-    ) -> anyhow::Result<Self> {
-        if let Some(path) = path {
-            let config = load_config(Some(path))?;
-            Self::inner_from_config(keypair, &config, name_peer)
-        } else {
-            Self::new(keypair, name_peer)
-        }
-    }
-
-    pub fn inner_from_config(
-        keypair: identity::Keypair,
-        config: &Config,
-        name_peer: Option<String>,
-    ) -> anyhow::Result<Self> {
-        let peer_id = keypair.clone().public().to_peer_id();
-        log::debug!("New peer id: {peer_id}");
-
-        let name_to_initialize = match name_peer {
-            Some(peer_id) => peer_id,
-            None => peer_id.to_string(),
-        };
-        let db = Arc::new(init_db(name_to_initialize.as_str())?);
-
-        let (tx, rx) = mpsc::channel::<ChatCommand>(BUFFER_SIZE); // save tx if needed outside
-        let validator_client =
-            ValidatorClient::new(peer_id, tx.clone(), db.clone(), keypair.clone());
-        let validator_handler = ValidatorHandler::new(peer_id, db.clone());
-        let node =
-            NetworkClientNode::new(keypair.clone(), config, validator_handler, (tx.clone(), rx))?;
-
-        Ok(Self {
-            peer_id,
-            db,
-            validator_client: Arc::new(validator_client),
-            node: Arc::new(Mutex::new(Some(node))),
-            tx,
-        })
-    }
-
-    pub fn sender(&self) -> mpsc::Sender<ChatCommand> {
-        self.tx.clone()
-    }
-
-    pub async fn validate_content(
-        &self,
-        key: &str,
-        topic: &str,
-        content: &str,
-    ) -> anyhow::Result<()> {
-        self.validator_client
-            .ask_validation(key, topic, content)
-            .await?;
-        Ok(())
-    }
-
-    pub async fn remote_new_topic(&self, topic: &str) -> anyhow::Result<()> {
-        self.validator_client.remote_new_topic(topic).await
-    }
-
-    pub fn new_key_for_content(&self, topic: &str, content: &str) -> anyhow::Result<String> {
-        self.validator_client.new_key_available(topic, content)
-    }
-
-    pub async fn register_topic(&self, topic: &str) -> anyhow::Result<()> {
-        self.validator_client.register_topic(topic).await
-    }
-
-    pub async fn add_vote(&self, id_votation: &str, topic: &str, vote: Vote) -> anyhow::Result<()> {
-        self.validator_client
-            .add_vote(id_votation, topic, vote)
-            .await
-    }
-
-    pub async fn voters(&self, key: &str, topic: &str) -> anyhow::Result<Vec<String>> {
-        self.validator_client.get_voters(key, topic)
-    }
-
-    pub fn get_reputation(&self, peer_id: &str, topic: &str) -> anyhow::Result<f32> {
-        self.validator_client.get_reputation(peer_id, topic)
-    }
-    pub fn get_reputations(&self, topic: &str) -> Vec<(String, f32)> {
-        self.validator_client.get_reputations(topic)
-    }
-
-    pub fn all_content(&self) {
-        self.validator_client.all_content()
-    }
-
-    pub fn get_status_vote(&self, key: &str) -> Option<String> {
-        self.validator_client.get_status_vote(key)
-    }
-
-    pub async fn spawn_node(&self) -> tokio::task::JoinHandle<()> {
-        let node_runner = self.node.clone();
-        tokio::spawn(async move {
-            let mut guard = node_runner.lock().await;
-            let node = guard.as_mut().unwrap();
-            node.run().await.expect("Network client node failed");
-        })
-    }
-
-    pub async fn spawn_validator(self) -> tokio::task::JoinHandle<()> {
-        let client = self.validator_client;
-        tokio::spawn(async move {
-            client
-                .wait_for_validators()
-                .await
-                .expect("Validator client failed");
-        })
-    }
-
-    pub async fn start(
-        self,
-    ) -> anyhow::Result<(tokio::task::JoinHandle<()>, tokio::task::JoinHandle<()>)> {
-        let j_1 = self.spawn_node().await;
-        let j_2 = self.spawn_validator().await;
-        Ok((j_1, j_2))
-    }
-}
 
 pub fn init_logging() {
     let _ = env_logger::builder()
@@ -196,7 +28,7 @@ async fn validation_among_clients() {
         std::fs::remove_dir_all(name_peer.clone()).unwrap();
         let keypair = identity::Keypair::generate_ed25519();
         let client =
-            TestClient::new(keypair, Some(name_peer)).expect("Failed to create test client");
+            APIClient::new(keypair, Some(name_peer)).expect("Failed to create test client");
         clients.push(client);
     }
 
@@ -310,37 +142,50 @@ pub fn run_relay_server(
 #[tokio::test]
 async fn validation_among_clients_2() {
     init_logging();
-    let mut clients = vec![];
 
+    /* server params*/
+    /*
     let p2p_port = 15000;
     let all_address = format!("/ip4/0.0.0.0/tcp/{p2p_port}").to_string();
     let loopback_address = format!("/ip4/127.0.0.1/tcp/{p2p_port}").to_string();
-
     let listen_ons = vec![all_address.clone(), loopback_address.clone()];
     let keypair = identity::Keypair::generate_ed25519();
-    let peer_id = PeerId::from(keypair.public());
-
-    /* topic */
-    let topic_to_register = "topic1".to_string();
+    let peer_id_server = PeerId::from(keypair.public());
+     */
     /* Running relay server */
+    /*
     run_relay_server(
         keypair,
         listen_ons,
         vec![topic_to_register.clone()],
         p2p_port,
     );
+     */
+
+    let server_address =
+        "/ip4/3.248.210.253/tcp/15000/p2p/12D3KooWQrGqCeHU7FeJQCPg4EmUHawBqJBVcUccHg8MFdhMHRj1"
+            .to_string();
+    let peer_id_server =
+        PeerId::from_str("12D3KooWQrGqCeHU7FeJQCPg4EmUHawBqJBVcUccHg8MFdhMHRj1").unwrap();
+
+    let mut clients = vec![];
+    /* client params */
+
+    /* topic */
+    let topic_to_register = "topic1".to_string();
+
     sleep(Duration::from_secs(10)).await;
     //////////////////////////////
 
     for iden_peer in 0..7 {
         let name_peer = format!("peer_id{}", iden_peer);
         let _ = std::fs::remove_dir_all(name_peer.clone());
-        let keypair = identity::Keypair::generate_ed25519();
-        let client = TestClient::from_server_params(
-            keypair,
+        let keypair_client = identity::Keypair::generate_ed25519();
+        let client = APIClient::from_server_params(
+            keypair_client,
             Some(name_peer),
-            &peer_id.to_string(),
-            loopback_address.clone().as_str(),
+            &peer_id_server.to_string(),
+            server_address.clone().as_str(),
         )
         .unwrap();
         clients.push(client);

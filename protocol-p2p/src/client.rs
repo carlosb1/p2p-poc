@@ -12,10 +12,12 @@ use tokio::time::sleep;
 
 use messages_types::ChatCommand;
 
+use crate::models::db::DataContent;
+use crate::models::db::Votation;
 use crate::models::messages::{ContentMessage, Vote, DEFAULT_TOPIC};
 use crate::protocol::MessageHandler;
 use crate::{
-    db, DEFAULT_REPUTATION, MEMBERS_FOR_CONSENSUS, MIN_REPUTATION_THRESHOLD, TIMEOUT_SECS,
+    db, models, DEFAULT_REPUTATION, MEMBERS_FOR_CONSENSUS, MIN_REPUTATION_THRESHOLD, TIMEOUT_SECS,
 };
 
 pub struct ValidatorClient {
@@ -111,8 +113,8 @@ impl ValidatorClient {
     }
 
     pub async fn add_vote(&self, id_votation: &str, topic: &str, vote: Vote) -> anyhow::Result<()> {
-        let Some(votation) =  db::get_status_vote(&self.db,id_votation) else {
-          log::info!("You are not included in this votation={}", id_votation);
+        let Some(votation) = db::get_status_vote(&self.db, id_votation) else {
+            log::info!("You are not included in this votation={}", id_votation);
             return Ok(());
         };
 
@@ -122,17 +124,21 @@ impl ValidatorClient {
         })?;
 
         if (votation.leader_id == self.peer_id.to_string()) {
-            log::info!("I am the leader with id={} for votation={} can I added it locally", votation.leader_id.clone(), id_votation);
-            self.inner_handler.lock().await.handle_message(self.peer_id, &data, topic);
+            log::info!(
+                "I am the leader with id={} for votation={} can I added it locally",
+                votation.leader_id.clone(),
+                id_votation
+            );
+            self.inner_handler
+                .lock()
+                .await
+                .handle_message(self.peer_id, &data, topic);
             return Ok(());
         }
 
         log::info!("Sending a remote publish message");
         self.command_tx
-            .send(ChatCommand::Publish(
-                topic.to_string(),
-                data,
-            ))
+            .send(ChatCommand::Publish(topic.to_string(), data))
             .await
             .map_err(|e| anyhow!("Failed to send vote: {}", e))?;
         Ok(())
@@ -162,13 +168,12 @@ impl ValidatorClient {
         db::get_reputations(&self.db, topic)
     }
 
-    pub fn all_content(&self) {
-        db::get_contents(&self.db);
+    pub fn all_content(&self) -> Vec<DataContent> {
+        db::get_contents(&self.db)
     }
 
-    pub fn get_status_vote(&self, key: &str) -> Option<String> {
-        let votation = db::get_status_vote(&self.db, key);
-        votation.and_then(|vote| serde_json::to_string(&vote).ok())
+    pub fn get_status_vote(&self, key: &str) -> Option<Votation> {
+        db::get_status_vote(&self.db, key)
     }
 
     pub async fn wait_for_validators(&self) -> anyhow::Result<()> {

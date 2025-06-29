@@ -4,7 +4,7 @@ mod tests {
     use std::sync::atomic::{AtomicBool, Ordering};
     use std::sync::{Arc, Mutex};
     use std::time::Duration;
-    use uniffi_bindings_p2p::{init_logging, raw_message, set_listener, start, Event, EventListener};
+    use uniffi_bindings_p2p::{init_logging, dummy_raw_message, dummy_set_listener, dummy_start, Event, EventListener};
 
     const TEST_PEER_ID: &str = "12D3KooWPFwYxQzNrZd5oYTUFiczPstsGMepKwYBkZCBDMt85kz9";
     const TEST_USERNAME: &str = "carlosb";
@@ -43,10 +43,10 @@ mod tests {
         });
 
         // Register the listener
-        set_listener(listener.clone());
+        dummy_set_listener(listener.clone());
 
         // Start the node (can use dummy values)
-        start(
+        dummy_start(
             TEST_ADDRESS.to_string(),
             TEST_PEER_ID.to_string(),
             TEST_USERNAME.to_string(),
@@ -56,7 +56,7 @@ mod tests {
         tokio::time::sleep(Duration::from_secs(1)).await;
 
         // Send a test message
-        raw_message(
+        dummy_raw_message(
             TEST_TOPIC.to_string(),
             "hello world".to_string() + generate_rand_msg().as_str(),
         );

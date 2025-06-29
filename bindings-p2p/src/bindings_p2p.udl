@@ -1,15 +1,82 @@
+[Error]
+enum APIError {
+    "ConnectionError","ConcurrencyError", "RuntimeError"
+};
+
 namespace bindings_p2p {
+void dummy_start(string server_address, string peer_id, string username);
+void dummy_set_listener(EventListener listener);
+void dummy_raw_message(string topic, string message);
+    [Async, Throws=APIError]
     void start(string server_address, string peer_id, string username);
-    void set_listener(EventListener listener);
-    void raw_message(string topic, string message);
+    [Async,Throws=APIError]
+    void add_vote(string topic, string message, Vote vote);
+    [Async,Throws=APIError]
+    void validate_content(string id_votation, string topic, string content);
+    [Async, Throws=APIError]
+    void remote_new_topic(string topic);
+    [Async, Throws=APIError]
+    void register_topic(string topic);
+    [Async, Throws=APIError]
+    sequence<DataContent> all_content();
+    [Async, Throws=APIError]
+    Votation? get_status_vote(string key);
+    [Async, Throws=APIError]
+    sequence<string> voters(string key, string topic);
+
+    [Async, Throws=APIError]
+    float get_reputation(string peer_id, string topic);
+
+    [Async]
+    sequence<Reputation> get_reputations(string topic);
+
+
+};
+dictionary Reputation {
+    string name;
+    float repu;
 };
 
 dictionary Event {
     string topic;
     string message;
 };
+dictionary ConnectionData {
+    string server_peer_id;
+    string server_address;
+    string client_peer_id;
+};
+dictionary Vote {
+    boolean good;
+};
+
+dictionary VoteId {
+    string key;
+    float value;
+};
+
+dictionary Votation {
+    string id_votation;
+    timestamp timestam;
+    string content;
+    string status;
+    string leader_id;
+    string my_role;
+    sequence<VoteId> votes_id;
+};
+enum StateContent {
+    "Approved",
+    "Rejected",
+};
+
+dictionary DataContent {
+    string id_votation;
+    string content;
+    StateContent approved;
+};
+
 
 [Trait, WithForeign]
 interface EventListener {
-    string on_event(Event event);
+string on_event(Event event);
 };
