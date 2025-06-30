@@ -31,6 +31,13 @@ import java.nio.charset.CodingErrorAction
 import java.util.concurrent.atomic.AtomicLong
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.atomic.AtomicBoolean
+import kotlin.coroutines.resume
+import kotlinx.coroutines.CancellableContinuation
+import kotlinx.coroutines.DelicateCoroutinesApi
+import kotlinx.coroutines.GlobalScope
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.suspendCancellableCoroutine
 
 // This is a helper for safely working with byte buffers returned from the Rust code.
 // A rust-owned buffer is represented by its capacity, its current length, and a
@@ -742,6 +749,26 @@ internal open class UniffiVTableCallbackInterfaceEventListener(
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 // For large crates we prevent `MethodTooLargeException` (see #2340)
 // N.B. the name of the extension is very misleading, since it is 
 // rather `InterfaceTooLargeException`, caused by too many methods 
@@ -757,11 +784,31 @@ internal open class UniffiVTableCallbackInterfaceEventListener(
 // when the library is loaded.
 internal interface IntegrityCheckingUniffiLib : Library {
     // Integrity check functions only
-    fun uniffi_uniffi_bindings_p2p_checksum_func_raw_message(
+    fun uniffi_uniffi_bindings_p2p_checksum_func_add_vote(
 ): Short
-fun uniffi_uniffi_bindings_p2p_checksum_func_set_listener(
+fun uniffi_uniffi_bindings_p2p_checksum_func_all_content(
+): Short
+fun uniffi_uniffi_bindings_p2p_checksum_func_dummy_raw_message(
+): Short
+fun uniffi_uniffi_bindings_p2p_checksum_func_dummy_set_listener(
+): Short
+fun uniffi_uniffi_bindings_p2p_checksum_func_dummy_start(
+): Short
+fun uniffi_uniffi_bindings_p2p_checksum_func_get_reputation(
+): Short
+fun uniffi_uniffi_bindings_p2p_checksum_func_get_reputations(
+): Short
+fun uniffi_uniffi_bindings_p2p_checksum_func_get_status_vote(
+): Short
+fun uniffi_uniffi_bindings_p2p_checksum_func_register_topic(
+): Short
+fun uniffi_uniffi_bindings_p2p_checksum_func_remote_new_topic(
 ): Short
 fun uniffi_uniffi_bindings_p2p_checksum_func_start(
+): Short
+fun uniffi_uniffi_bindings_p2p_checksum_func_validate_content(
+): Short
+fun uniffi_uniffi_bindings_p2p_checksum_func_voters(
 ): Short
 fun uniffi_uniffi_bindings_p2p_checksum_method_eventlistener_on_event(
 ): Short
@@ -823,12 +870,32 @@ fun uniffi_uniffi_bindings_p2p_fn_init_callback_vtable_eventlistener(`vtable`: U
 ): Unit
 fun uniffi_uniffi_bindings_p2p_fn_method_eventlistener_on_event(`ptr`: Pointer,`event`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
 ): RustBuffer.ByValue
-fun uniffi_uniffi_bindings_p2p_fn_func_raw_message(`topic`: RustBuffer.ByValue,`message`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+fun uniffi_uniffi_bindings_p2p_fn_func_add_vote(`topic`: RustBuffer.ByValue,`message`: RustBuffer.ByValue,`vote`: RustBuffer.ByValue,
+): Long
+fun uniffi_uniffi_bindings_p2p_fn_func_all_content(
+): Long
+fun uniffi_uniffi_bindings_p2p_fn_func_dummy_raw_message(`topic`: RustBuffer.ByValue,`message`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
 ): Unit
-fun uniffi_uniffi_bindings_p2p_fn_func_set_listener(`listener`: Pointer,uniffi_out_err: UniffiRustCallStatus, 
+fun uniffi_uniffi_bindings_p2p_fn_func_dummy_set_listener(`listener`: Pointer,uniffi_out_err: UniffiRustCallStatus, 
 ): Unit
-fun uniffi_uniffi_bindings_p2p_fn_func_start(`serverAddress`: RustBuffer.ByValue,`peerId`: RustBuffer.ByValue,`username`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+fun uniffi_uniffi_bindings_p2p_fn_func_dummy_start(`serverAddress`: RustBuffer.ByValue,`peerId`: RustBuffer.ByValue,`username`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
 ): Unit
+fun uniffi_uniffi_bindings_p2p_fn_func_get_reputation(`peerId`: RustBuffer.ByValue,`topic`: RustBuffer.ByValue,
+): Long
+fun uniffi_uniffi_bindings_p2p_fn_func_get_reputations(`topic`: RustBuffer.ByValue,
+): Long
+fun uniffi_uniffi_bindings_p2p_fn_func_get_status_vote(`key`: RustBuffer.ByValue,
+): Long
+fun uniffi_uniffi_bindings_p2p_fn_func_register_topic(`topic`: RustBuffer.ByValue,
+): Long
+fun uniffi_uniffi_bindings_p2p_fn_func_remote_new_topic(`topic`: RustBuffer.ByValue,
+): Long
+fun uniffi_uniffi_bindings_p2p_fn_func_start(`serverAddress`: RustBuffer.ByValue,`peerId`: RustBuffer.ByValue,`username`: RustBuffer.ByValue,
+): Long
+fun uniffi_uniffi_bindings_p2p_fn_func_validate_content(`idVotation`: RustBuffer.ByValue,`topic`: RustBuffer.ByValue,`content`: RustBuffer.ByValue,
+): Long
+fun uniffi_uniffi_bindings_p2p_fn_func_voters(`key`: RustBuffer.ByValue,`topic`: RustBuffer.ByValue,
+): Long
 fun ffi_uniffi_bindings_p2p_rustbuffer_alloc(`size`: Long,uniffi_out_err: UniffiRustCallStatus, 
 ): RustBuffer.ByValue
 fun ffi_uniffi_bindings_p2p_rustbuffer_from_bytes(`bytes`: ForeignBytes.ByValue,uniffi_out_err: UniffiRustCallStatus, 
@@ -955,13 +1022,43 @@ private fun uniffiCheckContractApiVersion(lib: IntegrityCheckingUniffiLib) {
 }
 @Suppress("UNUSED_PARAMETER")
 private fun uniffiCheckApiChecksums(lib: IntegrityCheckingUniffiLib) {
-    if (lib.uniffi_uniffi_bindings_p2p_checksum_func_raw_message() != 10691.toShort()) {
+    if (lib.uniffi_uniffi_bindings_p2p_checksum_func_add_vote() != 23526.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
-    if (lib.uniffi_uniffi_bindings_p2p_checksum_func_set_listener() != 37429.toShort()) {
+    if (lib.uniffi_uniffi_bindings_p2p_checksum_func_all_content() != 1217.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
-    if (lib.uniffi_uniffi_bindings_p2p_checksum_func_start() != 1403.toShort()) {
+    if (lib.uniffi_uniffi_bindings_p2p_checksum_func_dummy_raw_message() != 43565.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_uniffi_bindings_p2p_checksum_func_dummy_set_listener() != 41029.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_uniffi_bindings_p2p_checksum_func_dummy_start() != 19920.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_uniffi_bindings_p2p_checksum_func_get_reputation() != 48265.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_uniffi_bindings_p2p_checksum_func_get_reputations() != 9185.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_uniffi_bindings_p2p_checksum_func_get_status_vote() != 42272.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_uniffi_bindings_p2p_checksum_func_register_topic() != 2977.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_uniffi_bindings_p2p_checksum_func_remote_new_topic() != 1486.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_uniffi_bindings_p2p_checksum_func_start() != 8283.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_uniffi_bindings_p2p_checksum_func_validate_content() != 31051.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_uniffi_bindings_p2p_checksum_func_voters() != 25805.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_uniffi_bindings_p2p_checksum_method_eventlistener_on_event() != 40838.toShort()) {
@@ -977,6 +1074,46 @@ public fun uniffiEnsureInitialized() {
 }
 
 // Async support
+// Async return type handlers
+
+internal const val UNIFFI_RUST_FUTURE_POLL_READY = 0.toByte()
+internal const val UNIFFI_RUST_FUTURE_POLL_MAYBE_READY = 1.toByte()
+
+internal val uniffiContinuationHandleMap = UniffiHandleMap<CancellableContinuation<Byte>>()
+
+// FFI type for Rust future continuations
+internal object uniffiRustFutureContinuationCallbackImpl: UniffiRustFutureContinuationCallback {
+    override fun callback(data: Long, pollResult: Byte) {
+        uniffiContinuationHandleMap.remove(data).resume(pollResult)
+    }
+}
+
+internal suspend fun<T, F, E: kotlin.Exception> uniffiRustCallAsync(
+    rustFuture: Long,
+    pollFunc: (Long, UniffiRustFutureContinuationCallback, Long) -> Unit,
+    completeFunc: (Long, UniffiRustCallStatus) -> F,
+    freeFunc: (Long) -> Unit,
+    liftFunc: (F) -> T,
+    errorHandler: UniffiRustCallStatusErrorHandler<E>
+): T {
+    try {
+        do {
+            val pollResult = suspendCancellableCoroutine<Byte> { continuation ->
+                pollFunc(
+                    rustFuture,
+                    uniffiRustFutureContinuationCallbackImpl,
+                    uniffiContinuationHandleMap.insert(continuation)
+                )
+            }
+        } while (pollResult != UNIFFI_RUST_FUTURE_POLL_READY);
+
+        return liftFunc(
+            uniffiRustCallWithError(errorHandler, { status -> completeFunc(rustFuture, status) })
+        )
+    } finally {
+        freeFunc(rustFuture)
+    }
+}
 
 // Public interface members begin here.
 
@@ -1144,6 +1281,52 @@ private class JavaLangRefCleanable(
 /**
  * @suppress
  */
+public object FfiConverterFloat: FfiConverter<Float, Float> {
+    override fun lift(value: Float): Float {
+        return value
+    }
+
+    override fun read(buf: ByteBuffer): Float {
+        return buf.getFloat()
+    }
+
+    override fun lower(value: Float): Float {
+        return value
+    }
+
+    override fun allocationSize(value: Float) = 4UL
+
+    override fun write(value: Float, buf: ByteBuffer) {
+        buf.putFloat(value)
+    }
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterBoolean: FfiConverter<Boolean, Byte> {
+    override fun lift(value: Byte): Boolean {
+        return value.toInt() != 0
+    }
+
+    override fun read(buf: ByteBuffer): Boolean {
+        return lift(buf.get())
+    }
+
+    override fun lower(value: Boolean): Byte {
+        return if (value) 1.toByte() else 0.toByte()
+    }
+
+    override fun allocationSize(value: Boolean) = 1UL
+
+    override fun write(value: Boolean, buf: ByteBuffer) {
+        buf.put(lower(value))
+    }
+}
+
+/**
+ * @suppress
+ */
 public object FfiConverterString: FfiConverter<String, RustBuffer.ByValue> {
     // Note: we don't inherit from FfiConverterRustBuffer, because we use a
     // special encoding when lowering/lifting.  We can use `RustBuffer.len` to
@@ -1195,6 +1378,49 @@ public object FfiConverterString: FfiConverter<String, RustBuffer.ByValue> {
         val byteBuf = toUtf8(value)
         buf.putInt(byteBuf.limit())
         buf.put(byteBuf)
+    }
+}
+
+
+/**
+ * @suppress
+ */
+public object FfiConverterTimestamp: FfiConverterRustBuffer<java.time.Instant> {
+    override fun read(buf: ByteBuffer): java.time.Instant {
+        val seconds = buf.getLong()
+        // Type mismatch (should be u32) but we check for overflow/underflow below
+        val nanoseconds = buf.getInt().toLong()
+        if (nanoseconds < 0) {
+            throw java.time.DateTimeException("Instant nanoseconds exceed minimum or maximum supported by uniffi")
+        }
+        if (seconds >= 0) {
+            return java.time.Instant.EPOCH.plus(java.time.Duration.ofSeconds(seconds, nanoseconds))
+        } else {
+            return java.time.Instant.EPOCH.minus(java.time.Duration.ofSeconds(-seconds, nanoseconds))
+        }
+    }
+
+    // 8 bytes for seconds, 4 bytes for nanoseconds
+    override fun allocationSize(value: java.time.Instant) = 12UL
+
+    override fun write(value: java.time.Instant, buf: ByteBuffer) {
+        var epochOffset = java.time.Duration.between(java.time.Instant.EPOCH, value)
+
+        var sign = 1
+        if (epochOffset.isNegative()) {
+            sign = -1
+            epochOffset = epochOffset.negated()
+        }
+
+        if (epochOffset.nano < 0) {
+            // Java docs provide guarantee that nano will always be positive, so this should be impossible
+            // See: https://docs.oracle.com/javase/8/docs/api/java/time/Instant.html
+            throw IllegalArgumentException("Invalid timestamp, nano value must be non-negative")
+        }
+
+        buf.putLong(sign * epochOffset.seconds)
+        // Type mismatch (should be u32) but since values will always be between 0 and 999,999,999 it should be OK
+        buf.putInt(epochOffset.nano)
     }
 }
 
@@ -1471,6 +1697,78 @@ public object FfiConverterTypeEventListener: FfiConverter<EventListener, Pointer
 
 
 
+data class ConnectionData (
+    var `serverPeerId`: kotlin.String, 
+    var `serverAddress`: kotlin.String, 
+    var `clientPeerId`: kotlin.String
+) {
+    
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeConnectionData: FfiConverterRustBuffer<ConnectionData> {
+    override fun read(buf: ByteBuffer): ConnectionData {
+        return ConnectionData(
+            FfiConverterString.read(buf),
+            FfiConverterString.read(buf),
+            FfiConverterString.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: ConnectionData) = (
+            FfiConverterString.allocationSize(value.`serverPeerId`) +
+            FfiConverterString.allocationSize(value.`serverAddress`) +
+            FfiConverterString.allocationSize(value.`clientPeerId`)
+    )
+
+    override fun write(value: ConnectionData, buf: ByteBuffer) {
+            FfiConverterString.write(value.`serverPeerId`, buf)
+            FfiConverterString.write(value.`serverAddress`, buf)
+            FfiConverterString.write(value.`clientPeerId`, buf)
+    }
+}
+
+
+
+data class DataContent (
+    var `idVotation`: kotlin.String, 
+    var `content`: kotlin.String, 
+    var `approved`: StateContent
+) {
+    
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeDataContent: FfiConverterRustBuffer<DataContent> {
+    override fun read(buf: ByteBuffer): DataContent {
+        return DataContent(
+            FfiConverterString.read(buf),
+            FfiConverterString.read(buf),
+            FfiConverterTypeStateContent.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: DataContent) = (
+            FfiConverterString.allocationSize(value.`idVotation`) +
+            FfiConverterString.allocationSize(value.`content`) +
+            FfiConverterTypeStateContent.allocationSize(value.`approved`)
+    )
+
+    override fun write(value: DataContent, buf: ByteBuffer) {
+            FfiConverterString.write(value.`idVotation`, buf)
+            FfiConverterString.write(value.`content`, buf)
+            FfiConverterTypeStateContent.write(value.`approved`, buf)
+    }
+}
+
+
+
 data class Event (
     var `topic`: kotlin.String, 
     var `message`: kotlin.String
@@ -1499,29 +1797,565 @@ public object FfiConverterTypeEvent: FfiConverterRustBuffer<Event> {
             FfiConverterString.write(value.`topic`, buf)
             FfiConverterString.write(value.`message`, buf)
     }
-} fun `rawMessage`(`topic`: kotlin.String, `message`: kotlin.String)
+}
+
+
+
+data class Reputation (
+    var `name`: kotlin.String, 
+    var `repu`: kotlin.Float
+) {
+    
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeReputation: FfiConverterRustBuffer<Reputation> {
+    override fun read(buf: ByteBuffer): Reputation {
+        return Reputation(
+            FfiConverterString.read(buf),
+            FfiConverterFloat.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: Reputation) = (
+            FfiConverterString.allocationSize(value.`name`) +
+            FfiConverterFloat.allocationSize(value.`repu`)
+    )
+
+    override fun write(value: Reputation, buf: ByteBuffer) {
+            FfiConverterString.write(value.`name`, buf)
+            FfiConverterFloat.write(value.`repu`, buf)
+    }
+}
+
+
+
+data class Votation (
+    var `idVotation`: kotlin.String, 
+    var `timestam`: java.time.Instant, 
+    var `content`: kotlin.String, 
+    var `status`: kotlin.String, 
+    var `leaderId`: kotlin.String, 
+    var `myRole`: kotlin.String, 
+    var `votesId`: List<VoteId>
+) {
+    
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeVotation: FfiConverterRustBuffer<Votation> {
+    override fun read(buf: ByteBuffer): Votation {
+        return Votation(
+            FfiConverterString.read(buf),
+            FfiConverterTimestamp.read(buf),
+            FfiConverterString.read(buf),
+            FfiConverterString.read(buf),
+            FfiConverterString.read(buf),
+            FfiConverterString.read(buf),
+            FfiConverterSequenceTypeVoteId.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: Votation) = (
+            FfiConverterString.allocationSize(value.`idVotation`) +
+            FfiConverterTimestamp.allocationSize(value.`timestam`) +
+            FfiConverterString.allocationSize(value.`content`) +
+            FfiConverterString.allocationSize(value.`status`) +
+            FfiConverterString.allocationSize(value.`leaderId`) +
+            FfiConverterString.allocationSize(value.`myRole`) +
+            FfiConverterSequenceTypeVoteId.allocationSize(value.`votesId`)
+    )
+
+    override fun write(value: Votation, buf: ByteBuffer) {
+            FfiConverterString.write(value.`idVotation`, buf)
+            FfiConverterTimestamp.write(value.`timestam`, buf)
+            FfiConverterString.write(value.`content`, buf)
+            FfiConverterString.write(value.`status`, buf)
+            FfiConverterString.write(value.`leaderId`, buf)
+            FfiConverterString.write(value.`myRole`, buf)
+            FfiConverterSequenceTypeVoteId.write(value.`votesId`, buf)
+    }
+}
+
+
+
+data class Vote (
+    var `good`: kotlin.Boolean
+) {
+    
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeVote: FfiConverterRustBuffer<Vote> {
+    override fun read(buf: ByteBuffer): Vote {
+        return Vote(
+            FfiConverterBoolean.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: Vote) = (
+            FfiConverterBoolean.allocationSize(value.`good`)
+    )
+
+    override fun write(value: Vote, buf: ByteBuffer) {
+            FfiConverterBoolean.write(value.`good`, buf)
+    }
+}
+
+
+
+data class VoteId (
+    var `key`: kotlin.String, 
+    var `value`: kotlin.Float
+) {
+    
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeVoteId: FfiConverterRustBuffer<VoteId> {
+    override fun read(buf: ByteBuffer): VoteId {
+        return VoteId(
+            FfiConverterString.read(buf),
+            FfiConverterFloat.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: VoteId) = (
+            FfiConverterString.allocationSize(value.`key`) +
+            FfiConverterFloat.allocationSize(value.`value`)
+    )
+
+    override fun write(value: VoteId, buf: ByteBuffer) {
+            FfiConverterString.write(value.`key`, buf)
+            FfiConverterFloat.write(value.`value`, buf)
+    }
+}
+
+
+
+
+
+sealed class ApiException(message: String): kotlin.Exception(message) {
+        
+        class ConnectionException(message: String) : ApiException(message)
+        
+        class ConcurrencyException(message: String) : ApiException(message)
+        
+        class RuntimeException(message: String) : ApiException(message)
+        
+
+    companion object ErrorHandler : UniffiRustCallStatusErrorHandler<ApiException> {
+        override fun lift(error_buf: RustBuffer.ByValue): ApiException = FfiConverterTypeAPIError.lift(error_buf)
+    }
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeAPIError : FfiConverterRustBuffer<ApiException> {
+    override fun read(buf: ByteBuffer): ApiException {
+        
+            return when(buf.getInt()) {
+            1 -> ApiException.ConnectionException(FfiConverterString.read(buf))
+            2 -> ApiException.ConcurrencyException(FfiConverterString.read(buf))
+            3 -> ApiException.RuntimeException(FfiConverterString.read(buf))
+            else -> throw RuntimeException("invalid error enum value, something is very wrong!!")
+        }
+        
+    }
+
+    override fun allocationSize(value: ApiException): ULong {
+        return 4UL
+    }
+
+    override fun write(value: ApiException, buf: ByteBuffer) {
+        when(value) {
+            is ApiException.ConnectionException -> {
+                buf.putInt(1)
+                Unit
+            }
+            is ApiException.ConcurrencyException -> {
+                buf.putInt(2)
+                Unit
+            }
+            is ApiException.RuntimeException -> {
+                buf.putInt(3)
+                Unit
+            }
+        }.let { /* this makes the `when` an expression, which ensures it is exhaustive */ }
+    }
+
+}
+
+
+
+
+enum class StateContent {
+    
+    APPROVED,
+    REJECTED;
+    companion object
+}
+
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeStateContent: FfiConverterRustBuffer<StateContent> {
+    override fun read(buf: ByteBuffer) = try {
+        StateContent.values()[buf.getInt() - 1]
+    } catch (e: IndexOutOfBoundsException) {
+        throw RuntimeException("invalid enum value, something is very wrong!!", e)
+    }
+
+    override fun allocationSize(value: StateContent) = 4UL
+
+    override fun write(value: StateContent, buf: ByteBuffer) {
+        buf.putInt(value.ordinal + 1)
+    }
+}
+
+
+
+
+
+
+/**
+ * @suppress
+ */
+public object FfiConverterOptionalTypeVotation: FfiConverterRustBuffer<Votation?> {
+    override fun read(buf: ByteBuffer): Votation? {
+        if (buf.get().toInt() == 0) {
+            return null
+        }
+        return FfiConverterTypeVotation.read(buf)
+    }
+
+    override fun allocationSize(value: Votation?): ULong {
+        if (value == null) {
+            return 1UL
+        } else {
+            return 1UL + FfiConverterTypeVotation.allocationSize(value)
+        }
+    }
+
+    override fun write(value: Votation?, buf: ByteBuffer) {
+        if (value == null) {
+            buf.put(0)
+        } else {
+            buf.put(1)
+            FfiConverterTypeVotation.write(value, buf)
+        }
+    }
+}
+
+
+
+
+/**
+ * @suppress
+ */
+public object FfiConverterSequenceString: FfiConverterRustBuffer<List<kotlin.String>> {
+    override fun read(buf: ByteBuffer): List<kotlin.String> {
+        val len = buf.getInt()
+        return List<kotlin.String>(len) {
+            FfiConverterString.read(buf)
+        }
+    }
+
+    override fun allocationSize(value: List<kotlin.String>): ULong {
+        val sizeForLength = 4UL
+        val sizeForItems = value.map { FfiConverterString.allocationSize(it) }.sum()
+        return sizeForLength + sizeForItems
+    }
+
+    override fun write(value: List<kotlin.String>, buf: ByteBuffer) {
+        buf.putInt(value.size)
+        value.iterator().forEach {
+            FfiConverterString.write(it, buf)
+        }
+    }
+}
+
+
+
+
+/**
+ * @suppress
+ */
+public object FfiConverterSequenceTypeDataContent: FfiConverterRustBuffer<List<DataContent>> {
+    override fun read(buf: ByteBuffer): List<DataContent> {
+        val len = buf.getInt()
+        return List<DataContent>(len) {
+            FfiConverterTypeDataContent.read(buf)
+        }
+    }
+
+    override fun allocationSize(value: List<DataContent>): ULong {
+        val sizeForLength = 4UL
+        val sizeForItems = value.map { FfiConverterTypeDataContent.allocationSize(it) }.sum()
+        return sizeForLength + sizeForItems
+    }
+
+    override fun write(value: List<DataContent>, buf: ByteBuffer) {
+        buf.putInt(value.size)
+        value.iterator().forEach {
+            FfiConverterTypeDataContent.write(it, buf)
+        }
+    }
+}
+
+
+
+
+/**
+ * @suppress
+ */
+public object FfiConverterSequenceTypeReputation: FfiConverterRustBuffer<List<Reputation>> {
+    override fun read(buf: ByteBuffer): List<Reputation> {
+        val len = buf.getInt()
+        return List<Reputation>(len) {
+            FfiConverterTypeReputation.read(buf)
+        }
+    }
+
+    override fun allocationSize(value: List<Reputation>): ULong {
+        val sizeForLength = 4UL
+        val sizeForItems = value.map { FfiConverterTypeReputation.allocationSize(it) }.sum()
+        return sizeForLength + sizeForItems
+    }
+
+    override fun write(value: List<Reputation>, buf: ByteBuffer) {
+        buf.putInt(value.size)
+        value.iterator().forEach {
+            FfiConverterTypeReputation.write(it, buf)
+        }
+    }
+}
+
+
+
+
+/**
+ * @suppress
+ */
+public object FfiConverterSequenceTypeVoteId: FfiConverterRustBuffer<List<VoteId>> {
+    override fun read(buf: ByteBuffer): List<VoteId> {
+        val len = buf.getInt()
+        return List<VoteId>(len) {
+            FfiConverterTypeVoteId.read(buf)
+        }
+    }
+
+    override fun allocationSize(value: List<VoteId>): ULong {
+        val sizeForLength = 4UL
+        val sizeForItems = value.map { FfiConverterTypeVoteId.allocationSize(it) }.sum()
+        return sizeForLength + sizeForItems
+    }
+
+    override fun write(value: List<VoteId>, buf: ByteBuffer) {
+        buf.putInt(value.size)
+        value.iterator().forEach {
+            FfiConverterTypeVoteId.write(it, buf)
+        }
+    }
+}
+
+
+
+
+
+
+
+
+    @Throws(ApiException::class)
+    @Suppress("ASSIGNED_BUT_NEVER_ACCESSED_VARIABLE")
+     suspend fun `addVote`(`topic`: kotlin.String, `message`: kotlin.String, `vote`: Vote) {
+        return uniffiRustCallAsync(
+        UniffiLib.INSTANCE.uniffi_uniffi_bindings_p2p_fn_func_add_vote(FfiConverterString.lower(`topic`),FfiConverterString.lower(`message`),FfiConverterTypeVote.lower(`vote`),),
+        { future, callback, continuation -> UniffiLib.INSTANCE.ffi_uniffi_bindings_p2p_rust_future_poll_void(future, callback, continuation) },
+        { future, continuation -> UniffiLib.INSTANCE.ffi_uniffi_bindings_p2p_rust_future_complete_void(future, continuation) },
+        { future -> UniffiLib.INSTANCE.ffi_uniffi_bindings_p2p_rust_future_free_void(future) },
+        // lift function
+        { Unit },
+        
+        // Error FFI converter
+        ApiException.ErrorHandler,
+    )
+    }
+
+    @Throws(ApiException::class)
+    @Suppress("ASSIGNED_BUT_NEVER_ACCESSED_VARIABLE")
+     suspend fun `allContent`() : List<DataContent> {
+        return uniffiRustCallAsync(
+        UniffiLib.INSTANCE.uniffi_uniffi_bindings_p2p_fn_func_all_content(),
+        { future, callback, continuation -> UniffiLib.INSTANCE.ffi_uniffi_bindings_p2p_rust_future_poll_rust_buffer(future, callback, continuation) },
+        { future, continuation -> UniffiLib.INSTANCE.ffi_uniffi_bindings_p2p_rust_future_complete_rust_buffer(future, continuation) },
+        { future -> UniffiLib.INSTANCE.ffi_uniffi_bindings_p2p_rust_future_free_rust_buffer(future) },
+        // lift function
+        { FfiConverterSequenceTypeDataContent.lift(it) },
+        // Error FFI converter
+        ApiException.ErrorHandler,
+    )
+    }
+ fun `dummyRawMessage`(`topic`: kotlin.String, `message`: kotlin.String)
         = 
     uniffiRustCall() { _status ->
-    UniffiLib.INSTANCE.uniffi_uniffi_bindings_p2p_fn_func_raw_message(
+    UniffiLib.INSTANCE.uniffi_uniffi_bindings_p2p_fn_func_dummy_raw_message(
         FfiConverterString.lower(`topic`),FfiConverterString.lower(`message`),_status)
 }
     
     
- fun `setListener`(`listener`: EventListener)
+ fun `dummySetListener`(`listener`: EventListener)
         = 
     uniffiRustCall() { _status ->
-    UniffiLib.INSTANCE.uniffi_uniffi_bindings_p2p_fn_func_set_listener(
+    UniffiLib.INSTANCE.uniffi_uniffi_bindings_p2p_fn_func_dummy_set_listener(
         FfiConverterTypeEventListener.lower(`listener`),_status)
 }
     
     
- fun `start`(`serverAddress`: kotlin.String, `peerId`: kotlin.String, `username`: kotlin.String)
+ fun `dummyStart`(`serverAddress`: kotlin.String, `peerId`: kotlin.String, `username`: kotlin.String)
         = 
     uniffiRustCall() { _status ->
-    UniffiLib.INSTANCE.uniffi_uniffi_bindings_p2p_fn_func_start(
+    UniffiLib.INSTANCE.uniffi_uniffi_bindings_p2p_fn_func_dummy_start(
         FfiConverterString.lower(`serverAddress`),FfiConverterString.lower(`peerId`),FfiConverterString.lower(`username`),_status)
 }
     
     
+
+    @Throws(ApiException::class)
+    @Suppress("ASSIGNED_BUT_NEVER_ACCESSED_VARIABLE")
+     suspend fun `getReputation`(`peerId`: kotlin.String, `topic`: kotlin.String) : kotlin.Float {
+        return uniffiRustCallAsync(
+        UniffiLib.INSTANCE.uniffi_uniffi_bindings_p2p_fn_func_get_reputation(FfiConverterString.lower(`peerId`),FfiConverterString.lower(`topic`),),
+        { future, callback, continuation -> UniffiLib.INSTANCE.ffi_uniffi_bindings_p2p_rust_future_poll_f32(future, callback, continuation) },
+        { future, continuation -> UniffiLib.INSTANCE.ffi_uniffi_bindings_p2p_rust_future_complete_f32(future, continuation) },
+        { future -> UniffiLib.INSTANCE.ffi_uniffi_bindings_p2p_rust_future_free_f32(future) },
+        // lift function
+        { FfiConverterFloat.lift(it) },
+        // Error FFI converter
+        ApiException.ErrorHandler,
+    )
+    }
+
+    @Suppress("ASSIGNED_BUT_NEVER_ACCESSED_VARIABLE")
+     suspend fun `getReputations`(`topic`: kotlin.String) : List<Reputation> {
+        return uniffiRustCallAsync(
+        UniffiLib.INSTANCE.uniffi_uniffi_bindings_p2p_fn_func_get_reputations(FfiConverterString.lower(`topic`),),
+        { future, callback, continuation -> UniffiLib.INSTANCE.ffi_uniffi_bindings_p2p_rust_future_poll_rust_buffer(future, callback, continuation) },
+        { future, continuation -> UniffiLib.INSTANCE.ffi_uniffi_bindings_p2p_rust_future_complete_rust_buffer(future, continuation) },
+        { future -> UniffiLib.INSTANCE.ffi_uniffi_bindings_p2p_rust_future_free_rust_buffer(future) },
+        // lift function
+        { FfiConverterSequenceTypeReputation.lift(it) },
+        // Error FFI converter
+        UniffiNullRustCallStatusErrorHandler,
+    )
+    }
+
+    @Throws(ApiException::class)
+    @Suppress("ASSIGNED_BUT_NEVER_ACCESSED_VARIABLE")
+     suspend fun `getStatusVote`(`key`: kotlin.String) : Votation? {
+        return uniffiRustCallAsync(
+        UniffiLib.INSTANCE.uniffi_uniffi_bindings_p2p_fn_func_get_status_vote(FfiConverterString.lower(`key`),),
+        { future, callback, continuation -> UniffiLib.INSTANCE.ffi_uniffi_bindings_p2p_rust_future_poll_rust_buffer(future, callback, continuation) },
+        { future, continuation -> UniffiLib.INSTANCE.ffi_uniffi_bindings_p2p_rust_future_complete_rust_buffer(future, continuation) },
+        { future -> UniffiLib.INSTANCE.ffi_uniffi_bindings_p2p_rust_future_free_rust_buffer(future) },
+        // lift function
+        { FfiConverterOptionalTypeVotation.lift(it) },
+        // Error FFI converter
+        ApiException.ErrorHandler,
+    )
+    }
+
+    @Throws(ApiException::class)
+    @Suppress("ASSIGNED_BUT_NEVER_ACCESSED_VARIABLE")
+     suspend fun `registerTopic`(`topic`: kotlin.String) {
+        return uniffiRustCallAsync(
+        UniffiLib.INSTANCE.uniffi_uniffi_bindings_p2p_fn_func_register_topic(FfiConverterString.lower(`topic`),),
+        { future, callback, continuation -> UniffiLib.INSTANCE.ffi_uniffi_bindings_p2p_rust_future_poll_void(future, callback, continuation) },
+        { future, continuation -> UniffiLib.INSTANCE.ffi_uniffi_bindings_p2p_rust_future_complete_void(future, continuation) },
+        { future -> UniffiLib.INSTANCE.ffi_uniffi_bindings_p2p_rust_future_free_void(future) },
+        // lift function
+        { Unit },
+        
+        // Error FFI converter
+        ApiException.ErrorHandler,
+    )
+    }
+
+    @Throws(ApiException::class)
+    @Suppress("ASSIGNED_BUT_NEVER_ACCESSED_VARIABLE")
+     suspend fun `remoteNewTopic`(`topic`: kotlin.String) {
+        return uniffiRustCallAsync(
+        UniffiLib.INSTANCE.uniffi_uniffi_bindings_p2p_fn_func_remote_new_topic(FfiConverterString.lower(`topic`),),
+        { future, callback, continuation -> UniffiLib.INSTANCE.ffi_uniffi_bindings_p2p_rust_future_poll_void(future, callback, continuation) },
+        { future, continuation -> UniffiLib.INSTANCE.ffi_uniffi_bindings_p2p_rust_future_complete_void(future, continuation) },
+        { future -> UniffiLib.INSTANCE.ffi_uniffi_bindings_p2p_rust_future_free_void(future) },
+        // lift function
+        { Unit },
+        
+        // Error FFI converter
+        ApiException.ErrorHandler,
+    )
+    }
+
+    @Throws(ApiException::class)
+    @Suppress("ASSIGNED_BUT_NEVER_ACCESSED_VARIABLE")
+     suspend fun `start`(`serverAddress`: kotlin.String, `peerId`: kotlin.String, `username`: kotlin.String) {
+        return uniffiRustCallAsync(
+        UniffiLib.INSTANCE.uniffi_uniffi_bindings_p2p_fn_func_start(FfiConverterString.lower(`serverAddress`),FfiConverterString.lower(`peerId`),FfiConverterString.lower(`username`),),
+        { future, callback, continuation -> UniffiLib.INSTANCE.ffi_uniffi_bindings_p2p_rust_future_poll_void(future, callback, continuation) },
+        { future, continuation -> UniffiLib.INSTANCE.ffi_uniffi_bindings_p2p_rust_future_complete_void(future, continuation) },
+        { future -> UniffiLib.INSTANCE.ffi_uniffi_bindings_p2p_rust_future_free_void(future) },
+        // lift function
+        { Unit },
+        
+        // Error FFI converter
+        ApiException.ErrorHandler,
+    )
+    }
+
+    @Throws(ApiException::class)
+    @Suppress("ASSIGNED_BUT_NEVER_ACCESSED_VARIABLE")
+     suspend fun `validateContent`(`idVotation`: kotlin.String, `topic`: kotlin.String, `content`: kotlin.String) {
+        return uniffiRustCallAsync(
+        UniffiLib.INSTANCE.uniffi_uniffi_bindings_p2p_fn_func_validate_content(FfiConverterString.lower(`idVotation`),FfiConverterString.lower(`topic`),FfiConverterString.lower(`content`),),
+        { future, callback, continuation -> UniffiLib.INSTANCE.ffi_uniffi_bindings_p2p_rust_future_poll_void(future, callback, continuation) },
+        { future, continuation -> UniffiLib.INSTANCE.ffi_uniffi_bindings_p2p_rust_future_complete_void(future, continuation) },
+        { future -> UniffiLib.INSTANCE.ffi_uniffi_bindings_p2p_rust_future_free_void(future) },
+        // lift function
+        { Unit },
+        
+        // Error FFI converter
+        ApiException.ErrorHandler,
+    )
+    }
+
+    @Throws(ApiException::class)
+    @Suppress("ASSIGNED_BUT_NEVER_ACCESSED_VARIABLE")
+     suspend fun `voters`(`key`: kotlin.String, `topic`: kotlin.String) : List<kotlin.String> {
+        return uniffiRustCallAsync(
+        UniffiLib.INSTANCE.uniffi_uniffi_bindings_p2p_fn_func_voters(FfiConverterString.lower(`key`),FfiConverterString.lower(`topic`),),
+        { future, callback, continuation -> UniffiLib.INSTANCE.ffi_uniffi_bindings_p2p_rust_future_poll_rust_buffer(future, callback, continuation) },
+        { future, continuation -> UniffiLib.INSTANCE.ffi_uniffi_bindings_p2p_rust_future_complete_rust_buffer(future, continuation) },
+        { future -> UniffiLib.INSTANCE.ffi_uniffi_bindings_p2p_rust_future_free_rust_buffer(future) },
+        // lift function
+        { FfiConverterSequenceString.lift(it) },
+        // Error FFI converter
+        ApiException.ErrorHandler,
+    )
+    }
 
 

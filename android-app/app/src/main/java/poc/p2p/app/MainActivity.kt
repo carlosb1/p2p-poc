@@ -1,28 +1,44 @@
 package poc.p2p.app
 
-import android.content.Intent
 import android.os.Bundle
-import android.util.Log
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
-import androidx.activity.enableEdgeToEdge
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.padding
-import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Text
-import androidx.compose.runtime.Composable
-import androidx.compose.ui.Modifier
-import androidx.compose.ui.tooling.preview.Preview
-import poc.p2p.app.ui.theme.AppTheme
 
 import android.widget.*
-import androidx.appcompat.app.AppCompatActivity
+import androidx.compose.material3.MaterialTheme
+import poc.p2p.app.ui.MainScreen
+import poc.p2p.app.ui.theme.AppNav
 import uniffi.bindings_p2p.*  // <- generado por uniffi-bindgen
-import java.util.concurrent.CopyOnWriteArrayList
-import kotlin.random.Random
 
-class MainActivity : AppCompatActivity() {
+//class MainActivity : AppCompatActivity() {
+class MainActivity : ComponentActivity() {
 
+    companion object {
+        init {
+            System.loadLibrary("uniffi_bindings_p2p")
+        }
+    }
+
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+
+        setContent {
+            MaterialTheme {
+                AppNav()
+            }
+        }
+        /*
+        setContent {
+            MaterialTheme {
+                MainScreen()
+            }
+        }
+
+         */
+    }
+
+
+    /*
     private val messages = CopyOnWriteArrayList<String>()
 
     private lateinit var textView: TextView
@@ -72,7 +88,7 @@ class MainActivity : AppCompatActivity() {
         }
 
         // Enlaza el listener
-        setListener(listener)
+        dummySetListener(listener)
 
         connectButton.setOnClickListener {
             val server = serverAddressInput.text.toString()
@@ -80,7 +96,7 @@ class MainActivity : AppCompatActivity() {
             val username = usernameInput.text.toString()
 
             if (server.isNotBlank() && publicKey.isNotBlank() && username.isNotBlank()) {
-                start(server, publicKey, username)
+                dummyStart(server, publicKey, username)
             }
         }
 
@@ -90,7 +106,7 @@ class MainActivity : AppCompatActivity() {
 
 
             if (msg.isNotBlank()) {
-                rawMessage("chat-room", msg)
+                dummyRawMessage("chat-room", msg)
                 input.setText("")
             }
         }
@@ -144,9 +160,7 @@ class MainActivity : AppCompatActivity() {
 
         return layout
     }
-    companion object {
-        init {
-            System.loadLibrary("uniffi_bindings_p2p")
-        }
-    }
+
+     */
+
 }

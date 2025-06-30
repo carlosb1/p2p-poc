@@ -59,5 +59,7 @@ dependencies {
 
     implementation("net.java.dev.jna:jna:5.17.0@aar")
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.6.4")
+    implementation("androidx.navigation:navigation-compose:2.7.3")
+
 
 }
