@@ -181,6 +181,34 @@ pub fn include_new_validated_content(
     Ok(())
 }
 
+pub async fn get_topics(db: &Db) -> Vec<String> {
+    /*
+    db.scan_prefix(format!("topics/{peer_id}"))
+        .filter_map(|item| {
+            if let Ok((_key, value)) = item {
+                serde_json::from_slice::<Vec<String>>(&value).ok()
+            } else {
+                None
+            }
+        })
+        .collect()
+            */
+    vec![]
+}
+
+pub async fn save_topic(db: &Db, topic: &str) -> anyhow::Result<()> {
+    /*
+    let key = format!("topics/}");
+    let value = serde_json::to_vec(data_content).expect("Failed to serialize reputation");
+    db.insert(key, value)?;
+    db.flush()?;
+    */
+    Ok(())
+}
+
+
+
+
 pub fn get_contents(db: &Db) -> Vec<models::db::DataContent> {
     db.scan_prefix(format!("content/"))
         .filter_map(|item| {
@@ -239,8 +267,8 @@ pub fn new_status_vote(db: &sled::Db, key: &str, votation: &Votation) -> anyhow:
     }
 }
 
-pub fn get_status_vote(db: &sled::Db, key: &str) -> Option<Votation> {
-    db.get(key)
+pub fn get_status_vote(db: &sled::Db, id_votation: &str) -> Option<Votation> {
+    db.get(id_votation)
         .ok()?
         .and_then(|value| { serde_json::from_slice::<Votation>(&value).ok() }.or(None))
 }

@@ -7,7 +7,7 @@ use protocol_p2p::db::init_db;
 use protocol_p2p::handler::ValidatorHandler;
 use protocol_p2p::models::db::{DataContent, Votation};
 use protocol_p2p::models::messages::Vote;
-use protocol_p2p::Db;
+use protocol_p2p::{db, Db};
 use std::sync::Arc;
 use tokio::sync::{mpsc, Mutex};
 
@@ -20,6 +20,23 @@ pub struct APIClient {
     validator_client: Arc<ValidatorClient>,
     pub node: Arc<Mutex<Option<NetworkClientNode<ValidatorHandler>>>>,
     tx: mpsc::Sender<ChatCommand>,
+}
+
+pub async fn load_server_tracker_data(url: &str) -> anyhow::Result<(String, Vec<String>)> {
+    use serde::Deserialize;
+    use reqwest::Error;
+
+    #[derive(Debug, Deserialize)]
+    struct NodeInfo {
+        id: String,
+        addresses: Vec<String>,
+    }
+
+    let response = reqwest::get(url).await?;
+    let data: NodeInfo = response.json().await?;
+    Ok((data.id, data.addresses))
+
+
 }
 
 impl APIClient {
@@ -103,23 +120,48 @@ impl APIClient {
         topic: &str,
         content: &str,
     ) -> anyhow::Result<()> {
+     //  db::save_content_to_validate();
+
         self.validator_client
             .ask_validation(key, topic, content)
             .await?;
         Ok(())
     }
 
-    pub async fn remote_new_topic(&self, topic: &str) -> anyhow::Result<()> {
-        self.validator_client.remote_new_topic(topic).await
+    pub async fn get_content_to_validate() {
+
     }
+
+    pub async fn remote_new_topic(&self, topic: &str) -> anyhow::Result<()> {
+        match self.validator_client.remote_new_topic(topic).await {
+            Ok(_) => {
+                db::save_topic(&self.db, topic).await?;
+                Ok(())
+            },
+            Err(e) => Err(anyhow::anyhow!(e)),
+        }
+    }
+
+    pub async fn register_topic(&self, topic: &str) -> anyhow::Result<()> {
+        match self.validator_client.register_topic(topic).await {
+            Ok(_) => {
+                db::save_topic(&self.db, topic).await?;
+                Ok(())
+            },
+            Err(e) => Err(anyhow::anyhow!(e)),
+        }
+    }
+
+    pub async fn get_your_topics(&self) -> Vec<String> {
+        db::get_topics(&self.db).await
+    }
+
 
     pub fn new_key_for_content(&self, topic: &str, content: &str) -> anyhow::Result<String> {
         self.validator_client.new_key_available(topic, content)
     }
 
-    pub async fn register_topic(&self, topic: &str) -> anyhow::Result<()> {
-        self.validator_client.register_topic(topic).await
-    }
+
 
     pub async fn add_vote(&self, id_votation: &str, topic: &str, vote: Vote) -> anyhow::Result<()> {
         self.validator_client
