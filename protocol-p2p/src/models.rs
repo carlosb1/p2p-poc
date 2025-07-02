@@ -5,6 +5,12 @@ pub mod db {
     use serde::{Deserialize, Serialize};
 
     #[derive(Serialize, Deserialize, Debug, Clone)]
+    pub struct Topic {
+        pub name: String,
+        pub description: String,
+    }
+
+    #[derive(Serialize, Deserialize, Debug, Clone)]
     pub struct Votation {
         pub id_votation: String,
         pub timestamp: DateTime<Utc>,
