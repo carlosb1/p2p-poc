@@ -3,11 +3,21 @@ use serde::{Deserialize, Serialize};
 pub mod db {
     use chrono::{DateTime, Utc};
     use serde::{Deserialize, Serialize};
+    use std::fmt;
 
     #[derive(Serialize, Deserialize, Debug, Clone)]
     pub struct Topic {
         pub name: String,
         pub description: String,
+    }
+
+    impl Topic {
+        pub fn new(name: &str, description: &str) -> Self {
+            Topic {
+                name: name.to_string(),
+                description: description.to_string(),
+            }
+        }
     }
 
     #[derive(Serialize, Deserialize, Debug, Clone)]
@@ -72,6 +82,77 @@ pub mod db {
                     StateContent::Rejected
                 },
             }
+        }
+    }
+
+    // Topic
+    impl fmt::Display for Topic {
+        fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+            write!(f, "Topic: {}\nDescription: {}", self.name, self.description)
+        }
+    }
+
+    // Votation
+    impl fmt::Display for Votation {
+        fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+            let votes: Vec<String> = self
+                .votes_id
+                .iter()
+                .map(|(id, score)| match score {
+                    Some(s) => format!("{}: {:.2}", id, s),
+                    None => format!("{}: No vote", id),
+                })
+                .collect();
+
+            write!(
+                f,
+                "Votation [{}]\nContent: {}\nStatus: {}\nLeader: {}\nRole: {}\nTimestamp: {}\nVotes:\n  {}",
+                self.id_votation,
+                self.content,
+                self.status,
+                self.leader_id,
+                self.my_role,
+                self.timestamp,
+                votes.join("\n  ")
+            )
+        }
+    }
+
+    // VoteStatus
+    impl fmt::Display for VoteStatus {
+        fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+            match self {
+                VoteStatus::Pending(votes) => {
+                    let votes_str: Vec<String> = votes
+                        .iter()
+                        .map(|(id, val)| format!("{}: {:.2}", id, val))
+                        .collect();
+                    write!(f, "Pending Votes:\n  {}", votes_str.join("\n  "))
+                }
+                VoteStatus::Accepted => write!(f, "Status: Accepted"),
+                VoteStatus::Rejected => write!(f, "Status: Rejected"),
+            }
+        }
+    }
+
+    // StateContent
+    impl fmt::Display for StateContent {
+        fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+            match self {
+                StateContent::Approved => write!(f, "Approved"),
+                StateContent::Rejected => write!(f, "Rejected"),
+            }
+        }
+    }
+
+    // DataContent
+    impl fmt::Display for DataContent {
+        fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+            write!(
+                f,
+                "Votation ID: {}\nContent: {}\nState: {}",
+                self.id_votation, self.content, self.approved
+            )
         }
     }
 }

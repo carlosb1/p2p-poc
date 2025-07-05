@@ -27,7 +27,6 @@ import threading
 import itertools
 import traceback
 import typing
-import asyncio
 import platform
 
 # Used for default argument values
@@ -461,9 +460,13 @@ def _uniffi_check_contract_api_version(lib):
         raise InternalError("UniFFI contract version mismatch: try cleaning and rebuilding your project")
 
 def _uniffi_check_api_checksums(lib):
-    if lib.uniffi_uniffi_bindings_p2p_checksum_func_add_vote() != 23526:
+    if lib.uniffi_uniffi_bindings_p2p_checksum_func_add_vote() != 9127:
         raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
-    if lib.uniffi_uniffi_bindings_p2p_checksum_func_all_content() != 1217:
+    if lib.uniffi_uniffi_bindings_p2p_checksum_func_all_content() != 35134:
+        raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    if lib.uniffi_uniffi_bindings_p2p_checksum_func_connection_data() != 54043:
+        raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    if lib.uniffi_uniffi_bindings_p2p_checksum_func_download_connection_data() != 22897:
         raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     if lib.uniffi_uniffi_bindings_p2p_checksum_func_dummy_raw_message() != 43565:
         raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
@@ -471,21 +474,29 @@ def _uniffi_check_api_checksums(lib):
         raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     if lib.uniffi_uniffi_bindings_p2p_checksum_func_dummy_start() != 19920:
         raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
-    if lib.uniffi_uniffi_bindings_p2p_checksum_func_get_reputation() != 48265:
+    if lib.uniffi_uniffi_bindings_p2p_checksum_func_get_my_topics() != 25688:
         raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
-    if lib.uniffi_uniffi_bindings_p2p_checksum_func_get_reputations() != 9185:
+    if lib.uniffi_uniffi_bindings_p2p_checksum_func_get_reputation() != 12763:
         raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
-    if lib.uniffi_uniffi_bindings_p2p_checksum_func_get_status_vote() != 42272:
+    if lib.uniffi_uniffi_bindings_p2p_checksum_func_get_reputations() != 32448:
         raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
-    if lib.uniffi_uniffi_bindings_p2p_checksum_func_register_topic() != 2977:
+    if lib.uniffi_uniffi_bindings_p2p_checksum_func_get_runtime_content_to_validate() != 23865:
         raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
-    if lib.uniffi_uniffi_bindings_p2p_checksum_func_remote_new_topic() != 1486:
+    if lib.uniffi_uniffi_bindings_p2p_checksum_func_get_status_vote() != 56723:
         raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
-    if lib.uniffi_uniffi_bindings_p2p_checksum_func_start() != 8283:
+    if lib.uniffi_uniffi_bindings_p2p_checksum_func_get_status_voteses() != 57360:
         raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
-    if lib.uniffi_uniffi_bindings_p2p_checksum_func_validate_content() != 31051:
+    if lib.uniffi_uniffi_bindings_p2p_checksum_func_new_key_available() != 57342:
         raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
-    if lib.uniffi_uniffi_bindings_p2p_checksum_func_voters() != 25805:
+    if lib.uniffi_uniffi_bindings_p2p_checksum_func_register_topic() != 19518:
+        raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    if lib.uniffi_uniffi_bindings_p2p_checksum_func_remote_new_topic() != 22201:
+        raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    if lib.uniffi_uniffi_bindings_p2p_checksum_func_start() != 33658:
+        raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    if lib.uniffi_uniffi_bindings_p2p_checksum_func_validate_content() != 57356:
+        raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    if lib.uniffi_uniffi_bindings_p2p_checksum_func_voters() != 4926:
         raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     if lib.uniffi_uniffi_bindings_p2p_checksum_method_eventlistener_on_event() != 40838:
         raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
@@ -627,11 +638,21 @@ _UniffiLib.uniffi_uniffi_bindings_p2p_fn_func_add_vote.argtypes = (
     _UniffiRustBuffer,
     _UniffiRustBuffer,
     _UniffiRustBuffer,
+    ctypes.POINTER(_UniffiRustCallStatus),
 )
-_UniffiLib.uniffi_uniffi_bindings_p2p_fn_func_add_vote.restype = ctypes.c_uint64
+_UniffiLib.uniffi_uniffi_bindings_p2p_fn_func_add_vote.restype = None
 _UniffiLib.uniffi_uniffi_bindings_p2p_fn_func_all_content.argtypes = (
+    ctypes.POINTER(_UniffiRustCallStatus),
 )
-_UniffiLib.uniffi_uniffi_bindings_p2p_fn_func_all_content.restype = ctypes.c_uint64
+_UniffiLib.uniffi_uniffi_bindings_p2p_fn_func_all_content.restype = _UniffiRustBuffer
+_UniffiLib.uniffi_uniffi_bindings_p2p_fn_func_connection_data.argtypes = (
+    ctypes.POINTER(_UniffiRustCallStatus),
+)
+_UniffiLib.uniffi_uniffi_bindings_p2p_fn_func_connection_data.restype = _UniffiRustBuffer
+_UniffiLib.uniffi_uniffi_bindings_p2p_fn_func_download_connection_data.argtypes = (
+    ctypes.POINTER(_UniffiRustCallStatus),
+)
+_UniffiLib.uniffi_uniffi_bindings_p2p_fn_func_download_connection_data.restype = _UniffiRustBuffer
 _UniffiLib.uniffi_uniffi_bindings_p2p_fn_func_dummy_raw_message.argtypes = (
     _UniffiRustBuffer,
     _UniffiRustBuffer,
@@ -650,44 +671,71 @@ _UniffiLib.uniffi_uniffi_bindings_p2p_fn_func_dummy_start.argtypes = (
     ctypes.POINTER(_UniffiRustCallStatus),
 )
 _UniffiLib.uniffi_uniffi_bindings_p2p_fn_func_dummy_start.restype = None
+_UniffiLib.uniffi_uniffi_bindings_p2p_fn_func_get_my_topics.argtypes = (
+    ctypes.POINTER(_UniffiRustCallStatus),
+)
+_UniffiLib.uniffi_uniffi_bindings_p2p_fn_func_get_my_topics.restype = _UniffiRustBuffer
 _UniffiLib.uniffi_uniffi_bindings_p2p_fn_func_get_reputation.argtypes = (
     _UniffiRustBuffer,
     _UniffiRustBuffer,
+    ctypes.POINTER(_UniffiRustCallStatus),
 )
-_UniffiLib.uniffi_uniffi_bindings_p2p_fn_func_get_reputation.restype = ctypes.c_uint64
+_UniffiLib.uniffi_uniffi_bindings_p2p_fn_func_get_reputation.restype = ctypes.c_float
 _UniffiLib.uniffi_uniffi_bindings_p2p_fn_func_get_reputations.argtypes = (
     _UniffiRustBuffer,
+    ctypes.POINTER(_UniffiRustCallStatus),
 )
-_UniffiLib.uniffi_uniffi_bindings_p2p_fn_func_get_reputations.restype = ctypes.c_uint64
+_UniffiLib.uniffi_uniffi_bindings_p2p_fn_func_get_reputations.restype = _UniffiRustBuffer
+_UniffiLib.uniffi_uniffi_bindings_p2p_fn_func_get_runtime_content_to_validate.argtypes = (
+    ctypes.POINTER(_UniffiRustCallStatus),
+)
+_UniffiLib.uniffi_uniffi_bindings_p2p_fn_func_get_runtime_content_to_validate.restype = _UniffiRustBuffer
 _UniffiLib.uniffi_uniffi_bindings_p2p_fn_func_get_status_vote.argtypes = (
     _UniffiRustBuffer,
+    ctypes.POINTER(_UniffiRustCallStatus),
 )
-_UniffiLib.uniffi_uniffi_bindings_p2p_fn_func_get_status_vote.restype = ctypes.c_uint64
+_UniffiLib.uniffi_uniffi_bindings_p2p_fn_func_get_status_vote.restype = _UniffiRustBuffer
+_UniffiLib.uniffi_uniffi_bindings_p2p_fn_func_get_status_voteses.argtypes = (
+    ctypes.POINTER(_UniffiRustCallStatus),
+)
+_UniffiLib.uniffi_uniffi_bindings_p2p_fn_func_get_status_voteses.restype = _UniffiRustBuffer
+_UniffiLib.uniffi_uniffi_bindings_p2p_fn_func_new_key_available.argtypes = (
+    _UniffiRustBuffer,
+    _UniffiRustBuffer,
+    ctypes.POINTER(_UniffiRustCallStatus),
+)
+_UniffiLib.uniffi_uniffi_bindings_p2p_fn_func_new_key_available.restype = _UniffiRustBuffer
 _UniffiLib.uniffi_uniffi_bindings_p2p_fn_func_register_topic.argtypes = (
     _UniffiRustBuffer,
+    _UniffiRustBuffer,
+    ctypes.POINTER(_UniffiRustCallStatus),
 )
-_UniffiLib.uniffi_uniffi_bindings_p2p_fn_func_register_topic.restype = ctypes.c_uint64
+_UniffiLib.uniffi_uniffi_bindings_p2p_fn_func_register_topic.restype = None
 _UniffiLib.uniffi_uniffi_bindings_p2p_fn_func_remote_new_topic.argtypes = (
     _UniffiRustBuffer,
+    _UniffiRustBuffer,
+    ctypes.POINTER(_UniffiRustCallStatus),
 )
-_UniffiLib.uniffi_uniffi_bindings_p2p_fn_func_remote_new_topic.restype = ctypes.c_uint64
+_UniffiLib.uniffi_uniffi_bindings_p2p_fn_func_remote_new_topic.restype = None
 _UniffiLib.uniffi_uniffi_bindings_p2p_fn_func_start.argtypes = (
     _UniffiRustBuffer,
     _UniffiRustBuffer,
     _UniffiRustBuffer,
+    ctypes.POINTER(_UniffiRustCallStatus),
 )
-_UniffiLib.uniffi_uniffi_bindings_p2p_fn_func_start.restype = ctypes.c_uint64
+_UniffiLib.uniffi_uniffi_bindings_p2p_fn_func_start.restype = None
 _UniffiLib.uniffi_uniffi_bindings_p2p_fn_func_validate_content.argtypes = (
     _UniffiRustBuffer,
     _UniffiRustBuffer,
-    _UniffiRustBuffer,
+    ctypes.POINTER(_UniffiRustCallStatus),
 )
-_UniffiLib.uniffi_uniffi_bindings_p2p_fn_func_validate_content.restype = ctypes.c_uint64
+_UniffiLib.uniffi_uniffi_bindings_p2p_fn_func_validate_content.restype = _UniffiRustBuffer
 _UniffiLib.uniffi_uniffi_bindings_p2p_fn_func_voters.argtypes = (
     _UniffiRustBuffer,
     _UniffiRustBuffer,
+    ctypes.POINTER(_UniffiRustCallStatus),
 )
-_UniffiLib.uniffi_uniffi_bindings_p2p_fn_func_voters.restype = ctypes.c_uint64
+_UniffiLib.uniffi_uniffi_bindings_p2p_fn_func_voters.restype = _UniffiRustBuffer
 _UniffiLib.ffi_uniffi_bindings_p2p_rustbuffer_alloc.argtypes = (
     ctypes.c_uint64,
     ctypes.POINTER(_UniffiRustCallStatus),
@@ -962,6 +1010,12 @@ _UniffiLib.uniffi_uniffi_bindings_p2p_checksum_func_add_vote.restype = ctypes.c_
 _UniffiLib.uniffi_uniffi_bindings_p2p_checksum_func_all_content.argtypes = (
 )
 _UniffiLib.uniffi_uniffi_bindings_p2p_checksum_func_all_content.restype = ctypes.c_uint16
+_UniffiLib.uniffi_uniffi_bindings_p2p_checksum_func_connection_data.argtypes = (
+)
+_UniffiLib.uniffi_uniffi_bindings_p2p_checksum_func_connection_data.restype = ctypes.c_uint16
+_UniffiLib.uniffi_uniffi_bindings_p2p_checksum_func_download_connection_data.argtypes = (
+)
+_UniffiLib.uniffi_uniffi_bindings_p2p_checksum_func_download_connection_data.restype = ctypes.c_uint16
 _UniffiLib.uniffi_uniffi_bindings_p2p_checksum_func_dummy_raw_message.argtypes = (
 )
 _UniffiLib.uniffi_uniffi_bindings_p2p_checksum_func_dummy_raw_message.restype = ctypes.c_uint16
@@ -971,15 +1025,27 @@ _UniffiLib.uniffi_uniffi_bindings_p2p_checksum_func_dummy_set_listener.restype =
 _UniffiLib.uniffi_uniffi_bindings_p2p_checksum_func_dummy_start.argtypes = (
 )
 _UniffiLib.uniffi_uniffi_bindings_p2p_checksum_func_dummy_start.restype = ctypes.c_uint16
+_UniffiLib.uniffi_uniffi_bindings_p2p_checksum_func_get_my_topics.argtypes = (
+)
+_UniffiLib.uniffi_uniffi_bindings_p2p_checksum_func_get_my_topics.restype = ctypes.c_uint16
 _UniffiLib.uniffi_uniffi_bindings_p2p_checksum_func_get_reputation.argtypes = (
 )
 _UniffiLib.uniffi_uniffi_bindings_p2p_checksum_func_get_reputation.restype = ctypes.c_uint16
 _UniffiLib.uniffi_uniffi_bindings_p2p_checksum_func_get_reputations.argtypes = (
 )
 _UniffiLib.uniffi_uniffi_bindings_p2p_checksum_func_get_reputations.restype = ctypes.c_uint16
+_UniffiLib.uniffi_uniffi_bindings_p2p_checksum_func_get_runtime_content_to_validate.argtypes = (
+)
+_UniffiLib.uniffi_uniffi_bindings_p2p_checksum_func_get_runtime_content_to_validate.restype = ctypes.c_uint16
 _UniffiLib.uniffi_uniffi_bindings_p2p_checksum_func_get_status_vote.argtypes = (
 )
 _UniffiLib.uniffi_uniffi_bindings_p2p_checksum_func_get_status_vote.restype = ctypes.c_uint16
+_UniffiLib.uniffi_uniffi_bindings_p2p_checksum_func_get_status_voteses.argtypes = (
+)
+_UniffiLib.uniffi_uniffi_bindings_p2p_checksum_func_get_status_voteses.restype = ctypes.c_uint16
+_UniffiLib.uniffi_uniffi_bindings_p2p_checksum_func_new_key_available.argtypes = (
+)
+_UniffiLib.uniffi_uniffi_bindings_p2p_checksum_func_new_key_available.restype = ctypes.c_uint16
 _UniffiLib.uniffi_uniffi_bindings_p2p_checksum_func_register_topic.argtypes = (
 )
 _UniffiLib.uniffi_uniffi_bindings_p2p_checksum_func_register_topic.restype = ctypes.c_uint16
@@ -1142,23 +1208,23 @@ class _UniffiConverterTimestamp(_UniffiConverterRustBuffer):
 
 
 class ConnectionData:
-    server_peer_id: "str"
-    server_address: "str"
-    client_peer_id: "str"
-    def __init__(self, *, server_peer_id: "str", server_address: "str", client_peer_id: "str"):
-        self.server_peer_id = server_peer_id
+    server_id: "str"
+    server_address: "typing.List[str]"
+    client_id: "typing.Optional[str]"
+    def __init__(self, *, server_id: "str", server_address: "typing.List[str]", client_id: "typing.Optional[str]"):
+        self.server_id = server_id
         self.server_address = server_address
-        self.client_peer_id = client_peer_id
+        self.client_id = client_id
 
     def __str__(self):
-        return "ConnectionData(server_peer_id={}, server_address={}, client_peer_id={})".format(self.server_peer_id, self.server_address, self.client_peer_id)
+        return "ConnectionData(server_id={}, server_address={}, client_id={})".format(self.server_id, self.server_address, self.client_id)
 
     def __eq__(self, other):
-        if self.server_peer_id != other.server_peer_id:
+        if self.server_id != other.server_id:
             return False
         if self.server_address != other.server_address:
             return False
-        if self.client_peer_id != other.client_peer_id:
+        if self.client_id != other.client_id:
             return False
         return True
 
@@ -1166,22 +1232,22 @@ class _UniffiConverterTypeConnectionData(_UniffiConverterRustBuffer):
     @staticmethod
     def read(buf):
         return ConnectionData(
-            server_peer_id=_UniffiConverterString.read(buf),
-            server_address=_UniffiConverterString.read(buf),
-            client_peer_id=_UniffiConverterString.read(buf),
+            server_id=_UniffiConverterString.read(buf),
+            server_address=_UniffiConverterSequenceString.read(buf),
+            client_id=_UniffiConverterOptionalString.read(buf),
         )
 
     @staticmethod
     def check_lower(value):
-        _UniffiConverterString.check_lower(value.server_peer_id)
-        _UniffiConverterString.check_lower(value.server_address)
-        _UniffiConverterString.check_lower(value.client_peer_id)
+        _UniffiConverterString.check_lower(value.server_id)
+        _UniffiConverterSequenceString.check_lower(value.server_address)
+        _UniffiConverterOptionalString.check_lower(value.client_id)
 
     @staticmethod
     def write(value, buf):
-        _UniffiConverterString.write(value.server_peer_id, buf)
-        _UniffiConverterString.write(value.server_address, buf)
-        _UniffiConverterString.write(value.client_peer_id, buf)
+        _UniffiConverterString.write(value.server_id, buf)
+        _UniffiConverterSequenceString.write(value.server_address, buf)
+        _UniffiConverterOptionalString.write(value.client_id, buf)
 
 
 class DataContent:
@@ -1263,6 +1329,42 @@ class _UniffiConverterTypeEvent(_UniffiConverterRustBuffer):
         _UniffiConverterString.write(value.message, buf)
 
 
+class Pair:
+    key: "str"
+    value: "float"
+    def __init__(self, *, key: "str", value: "float"):
+        self.key = key
+        self.value = value
+
+    def __str__(self):
+        return "Pair(key={}, value={})".format(self.key, self.value)
+
+    def __eq__(self, other):
+        if self.key != other.key:
+            return False
+        if self.value != other.value:
+            return False
+        return True
+
+class _UniffiConverterTypePair(_UniffiConverterRustBuffer):
+    @staticmethod
+    def read(buf):
+        return Pair(
+            key=_UniffiConverterString.read(buf),
+            value=_UniffiConverterFloat.read(buf),
+        )
+
+    @staticmethod
+    def check_lower(value):
+        _UniffiConverterString.check_lower(value.key)
+        _UniffiConverterFloat.check_lower(value.value)
+
+    @staticmethod
+    def write(value, buf):
+        _UniffiConverterString.write(value.key, buf)
+        _UniffiConverterFloat.write(value.value, buf)
+
+
 class Reputation:
     name: "str"
     repu: "float"
@@ -1297,6 +1399,92 @@ class _UniffiConverterTypeReputation(_UniffiConverterRustBuffer):
     def write(value, buf):
         _UniffiConverterString.write(value.name, buf)
         _UniffiConverterFloat.write(value.repu, buf)
+
+
+class RuntimePendingContent:
+    key: "str"
+    topic: "str"
+    content: "str"
+    wait_timeout: "Timestamp"
+    def __init__(self, *, key: "str", topic: "str", content: "str", wait_timeout: "Timestamp"):
+        self.key = key
+        self.topic = topic
+        self.content = content
+        self.wait_timeout = wait_timeout
+
+    def __str__(self):
+        return "RuntimePendingContent(key={}, topic={}, content={}, wait_timeout={})".format(self.key, self.topic, self.content, self.wait_timeout)
+
+    def __eq__(self, other):
+        if self.key != other.key:
+            return False
+        if self.topic != other.topic:
+            return False
+        if self.content != other.content:
+            return False
+        if self.wait_timeout != other.wait_timeout:
+            return False
+        return True
+
+class _UniffiConverterTypeRuntimePendingContent(_UniffiConverterRustBuffer):
+    @staticmethod
+    def read(buf):
+        return RuntimePendingContent(
+            key=_UniffiConverterString.read(buf),
+            topic=_UniffiConverterString.read(buf),
+            content=_UniffiConverterString.read(buf),
+            wait_timeout=_UniffiConverterTimestamp.read(buf),
+        )
+
+    @staticmethod
+    def check_lower(value):
+        _UniffiConverterString.check_lower(value.key)
+        _UniffiConverterString.check_lower(value.topic)
+        _UniffiConverterString.check_lower(value.content)
+        _UniffiConverterTimestamp.check_lower(value.wait_timeout)
+
+    @staticmethod
+    def write(value, buf):
+        _UniffiConverterString.write(value.key, buf)
+        _UniffiConverterString.write(value.topic, buf)
+        _UniffiConverterString.write(value.content, buf)
+        _UniffiConverterTimestamp.write(value.wait_timeout, buf)
+
+
+class Topic:
+    name: "str"
+    description: "str"
+    def __init__(self, *, name: "str", description: "str"):
+        self.name = name
+        self.description = description
+
+    def __str__(self):
+        return "Topic(name={}, description={})".format(self.name, self.description)
+
+    def __eq__(self, other):
+        if self.name != other.name:
+            return False
+        if self.description != other.description:
+            return False
+        return True
+
+class _UniffiConverterTypeTopic(_UniffiConverterRustBuffer):
+    @staticmethod
+    def read(buf):
+        return Topic(
+            name=_UniffiConverterString.read(buf),
+            description=_UniffiConverterString.read(buf),
+        )
+
+    @staticmethod
+    def check_lower(value):
+        _UniffiConverterString.check_lower(value.name)
+        _UniffiConverterString.check_lower(value.description)
+
+    @staticmethod
+    def write(value, buf):
+        _UniffiConverterString.write(value.name, buf)
+        _UniffiConverterString.write(value.description, buf)
 
 
 class Votation:
@@ -1435,6 +1623,42 @@ class _UniffiConverterTypeVoteId(_UniffiConverterRustBuffer):
         _UniffiConverterFloat.write(value.value, buf)
 
 
+class VoteStatus:
+    kind: "VoteStatusKind"
+    pending_data: "typing.Optional[typing.List[Pair]]"
+    def __init__(self, *, kind: "VoteStatusKind", pending_data: "typing.Optional[typing.List[Pair]]"):
+        self.kind = kind
+        self.pending_data = pending_data
+
+    def __str__(self):
+        return "VoteStatus(kind={}, pending_data={})".format(self.kind, self.pending_data)
+
+    def __eq__(self, other):
+        if self.kind != other.kind:
+            return False
+        if self.pending_data != other.pending_data:
+            return False
+        return True
+
+class _UniffiConverterTypeVoteStatus(_UniffiConverterRustBuffer):
+    @staticmethod
+    def read(buf):
+        return VoteStatus(
+            kind=_UniffiConverterTypeVoteStatusKind.read(buf),
+            pending_data=_UniffiConverterOptionalSequenceTypePair.read(buf),
+        )
+
+    @staticmethod
+    def check_lower(value):
+        _UniffiConverterTypeVoteStatusKind.check_lower(value.kind)
+        _UniffiConverterOptionalSequenceTypePair.check_lower(value.pending_data)
+
+    @staticmethod
+    def write(value, buf):
+        _UniffiConverterTypeVoteStatusKind.write(value.kind, buf)
+        _UniffiConverterOptionalSequenceTypePair.write(value.pending_data, buf)
+
+
 # ApiError
 # We want to define each variant as a nested class that's also a subclass,
 # which is tricky in Python.  To accomplish this we're going to create each
@@ -1543,6 +1767,106 @@ class _UniffiConverterTypeStateContent(_UniffiConverterRustBuffer):
 
 
 
+
+
+class VoteStatusKind(enum.Enum):
+    PENDING = 0
+    
+    ACCEPTED = 1
+    
+    REJECTED = 2
+    
+
+
+class _UniffiConverterTypeVoteStatusKind(_UniffiConverterRustBuffer):
+    @staticmethod
+    def read(buf):
+        variant = buf.read_i32()
+        if variant == 1:
+            return VoteStatusKind.PENDING
+        if variant == 2:
+            return VoteStatusKind.ACCEPTED
+        if variant == 3:
+            return VoteStatusKind.REJECTED
+        raise InternalError("Raw enum value doesn't match any cases")
+
+    @staticmethod
+    def check_lower(value):
+        if value == VoteStatusKind.PENDING:
+            return
+        if value == VoteStatusKind.ACCEPTED:
+            return
+        if value == VoteStatusKind.REJECTED:
+            return
+        raise ValueError(value)
+
+    @staticmethod
+    def write(value, buf):
+        if value == VoteStatusKind.PENDING:
+            buf.write_i32(1)
+        if value == VoteStatusKind.ACCEPTED:
+            buf.write_i32(2)
+        if value == VoteStatusKind.REJECTED:
+            buf.write_i32(3)
+
+
+
+
+
+class _UniffiConverterOptionalString(_UniffiConverterRustBuffer):
+    @classmethod
+    def check_lower(cls, value):
+        if value is not None:
+            _UniffiConverterString.check_lower(value)
+
+    @classmethod
+    def write(cls, value, buf):
+        if value is None:
+            buf.write_u8(0)
+            return
+
+        buf.write_u8(1)
+        _UniffiConverterString.write(value, buf)
+
+    @classmethod
+    def read(cls, buf):
+        flag = buf.read_u8()
+        if flag == 0:
+            return None
+        elif flag == 1:
+            return _UniffiConverterString.read(buf)
+        else:
+            raise InternalError("Unexpected flag byte for optional type")
+
+
+
+class _UniffiConverterOptionalTypeConnectionData(_UniffiConverterRustBuffer):
+    @classmethod
+    def check_lower(cls, value):
+        if value is not None:
+            _UniffiConverterTypeConnectionData.check_lower(value)
+
+    @classmethod
+    def write(cls, value, buf):
+        if value is None:
+            buf.write_u8(0)
+            return
+
+        buf.write_u8(1)
+        _UniffiConverterTypeConnectionData.write(value, buf)
+
+    @classmethod
+    def read(cls, buf):
+        flag = buf.read_u8()
+        if flag == 0:
+            return None
+        elif flag == 1:
+            return _UniffiConverterTypeConnectionData.read(buf)
+        else:
+            raise InternalError("Unexpected flag byte for optional type")
+
+
+
 class _UniffiConverterOptionalTypeVotation(_UniffiConverterRustBuffer):
     @classmethod
     def check_lower(cls, value):
@@ -1565,6 +1889,33 @@ class _UniffiConverterOptionalTypeVotation(_UniffiConverterRustBuffer):
             return None
         elif flag == 1:
             return _UniffiConverterTypeVotation.read(buf)
+        else:
+            raise InternalError("Unexpected flag byte for optional type")
+
+
+
+class _UniffiConverterOptionalSequenceTypePair(_UniffiConverterRustBuffer):
+    @classmethod
+    def check_lower(cls, value):
+        if value is not None:
+            _UniffiConverterSequenceTypePair.check_lower(value)
+
+    @classmethod
+    def write(cls, value, buf):
+        if value is None:
+            buf.write_u8(0)
+            return
+
+        buf.write_u8(1)
+        _UniffiConverterSequenceTypePair.write(value, buf)
+
+    @classmethod
+    def read(cls, buf):
+        flag = buf.read_u8()
+        if flag == 0:
+            return None
+        elif flag == 1:
+            return _UniffiConverterSequenceTypePair.read(buf)
         else:
             raise InternalError("Unexpected flag byte for optional type")
 
@@ -1620,6 +1971,31 @@ class _UniffiConverterSequenceTypeDataContent(_UniffiConverterRustBuffer):
 
 
 
+class _UniffiConverterSequenceTypePair(_UniffiConverterRustBuffer):
+    @classmethod
+    def check_lower(cls, value):
+        for item in value:
+            _UniffiConverterTypePair.check_lower(item)
+
+    @classmethod
+    def write(cls, value, buf):
+        items = len(value)
+        buf.write_i32(items)
+        for item in value:
+            _UniffiConverterTypePair.write(item, buf)
+
+    @classmethod
+    def read(cls, buf):
+        count = buf.read_i32()
+        if count < 0:
+            raise InternalError("Unexpected negative sequence length")
+
+        return [
+            _UniffiConverterTypePair.read(buf) for i in range(count)
+        ]
+
+
+
 class _UniffiConverterSequenceTypeReputation(_UniffiConverterRustBuffer):
     @classmethod
     def check_lower(cls, value):
@@ -1645,6 +2021,56 @@ class _UniffiConverterSequenceTypeReputation(_UniffiConverterRustBuffer):
 
 
 
+class _UniffiConverterSequenceTypeRuntimePendingContent(_UniffiConverterRustBuffer):
+    @classmethod
+    def check_lower(cls, value):
+        for item in value:
+            _UniffiConverterTypeRuntimePendingContent.check_lower(item)
+
+    @classmethod
+    def write(cls, value, buf):
+        items = len(value)
+        buf.write_i32(items)
+        for item in value:
+            _UniffiConverterTypeRuntimePendingContent.write(item, buf)
+
+    @classmethod
+    def read(cls, buf):
+        count = buf.read_i32()
+        if count < 0:
+            raise InternalError("Unexpected negative sequence length")
+
+        return [
+            _UniffiConverterTypeRuntimePendingContent.read(buf) for i in range(count)
+        ]
+
+
+
+class _UniffiConverterSequenceTypeTopic(_UniffiConverterRustBuffer):
+    @classmethod
+    def check_lower(cls, value):
+        for item in value:
+            _UniffiConverterTypeTopic.check_lower(item)
+
+    @classmethod
+    def write(cls, value, buf):
+        items = len(value)
+        buf.write_i32(items)
+        for item in value:
+            _UniffiConverterTypeTopic.write(item, buf)
+
+    @classmethod
+    def read(cls, buf):
+        count = buf.read_i32()
+        if count < 0:
+            raise InternalError("Unexpected negative sequence length")
+
+        return [
+            _UniffiConverterTypeTopic.read(buf) for i in range(count)
+        ]
+
+
+
 class _UniffiConverterSequenceTypeVoteId(_UniffiConverterRustBuffer):
     @classmethod
     def check_lower(cls, value):
@@ -1666,6 +2092,31 @@ class _UniffiConverterSequenceTypeVoteId(_UniffiConverterRustBuffer):
 
         return [
             _UniffiConverterTypeVoteId.read(buf) for i in range(count)
+        ]
+
+
+
+class _UniffiConverterSequenceTypeVoteStatus(_UniffiConverterRustBuffer):
+    @classmethod
+    def check_lower(cls, value):
+        for item in value:
+            _UniffiConverterTypeVoteStatus.check_lower(item)
+
+    @classmethod
+    def write(cls, value, buf):
+        items = len(value)
+        buf.write_i32(items)
+        for item in value:
+            _UniffiConverterTypeVoteStatus.write(item, buf)
+
+    @classmethod
+    def read(cls, buf):
+        count = buf.read_i32()
+        if count < 0:
+            raise InternalError("Unexpected negative sequence length")
+
+        return [
+            _UniffiConverterTypeVoteStatus.read(buf) for i in range(count)
         ]
 
 # objects.
@@ -1785,107 +2236,32 @@ class _UniffiConverterTypeEventListener:
     def write(cls, value: EventListenerProtocol, buf: _UniffiRustBuffer):
         buf.write_u64(cls.lower(value))
 
-# Async support# RustFuturePoll values
-_UNIFFI_RUST_FUTURE_POLL_READY = 0
-_UNIFFI_RUST_FUTURE_POLL_MAYBE_READY = 1
+# Async support
 
-# Stores futures for _uniffi_continuation_callback
-_UniffiContinuationHandleMap = _UniffiHandleMap()
-
-_UNIFFI_GLOBAL_EVENT_LOOP = None
-
-"""
-Set the event loop to use for async functions
-
-This is needed if some async functions run outside of the eventloop, for example:
-    - A non-eventloop thread is spawned, maybe from `EventLoop.run_in_executor` or maybe from the
-      Rust code spawning its own thread.
-    - The Rust code calls an async callback method from a sync callback function, using something
-      like `pollster` to block on the async call.
-
-In this case, we need an event loop to run the Python async function, but there's no eventloop set
-for the thread.  Use `uniffi_set_event_loop` to force an eventloop to be used in this case.
-"""
-def uniffi_set_event_loop(eventloop: asyncio.BaseEventLoop):
-    global _UNIFFI_GLOBAL_EVENT_LOOP
-    _UNIFFI_GLOBAL_EVENT_LOOP = eventloop
-
-def _uniffi_get_event_loop():
-    if _UNIFFI_GLOBAL_EVENT_LOOP is not None:
-        return _UNIFFI_GLOBAL_EVENT_LOOP
-    else:
-        return asyncio.get_running_loop()
-
-# Continuation callback for async functions
-# lift the return value or error and resolve the future, causing the async function to resume.
-@_UNIFFI_RUST_FUTURE_CONTINUATION_CALLBACK
-def _uniffi_continuation_callback(future_ptr, poll_code):
-    (eventloop, future) = _UniffiContinuationHandleMap.remove(future_ptr)
-    eventloop.call_soon_threadsafe(_uniffi_set_future_result, future, poll_code)
-
-def _uniffi_set_future_result(future, poll_code):
-    if not future.cancelled():
-        future.set_result(poll_code)
-
-async def _uniffi_rust_call_async(rust_future, ffi_poll, ffi_complete, ffi_free, lift_func, error_ffi_converter):
-    try:
-        eventloop = _uniffi_get_event_loop()
-
-        # Loop and poll until we see a _UNIFFI_RUST_FUTURE_POLL_READY value
-        while True:
-            future = eventloop.create_future()
-            ffi_poll(
-                rust_future,
-                _uniffi_continuation_callback,
-                _UniffiContinuationHandleMap.insert((eventloop, future)),
-            )
-            poll_code = await future
-            if poll_code == _UNIFFI_RUST_FUTURE_POLL_READY:
-                break
-
-        return lift_func(
-            _uniffi_rust_call_with_error(error_ffi_converter, ffi_complete, rust_future)
-        )
-    finally:
-        ffi_free(rust_future)
-async def add_vote(topic: "str",message: "str",vote: "Vote") -> None:
-
+def add_vote(topic: "str",message: "str",vote: "Vote") -> None:
     _UniffiConverterString.check_lower(topic)
     
     _UniffiConverterString.check_lower(message)
     
     _UniffiConverterTypeVote.check_lower(vote)
     
-    return await _uniffi_rust_call_async(
-        _UniffiLib.uniffi_uniffi_bindings_p2p_fn_func_add_vote(
+    _uniffi_rust_call_with_error(_UniffiConverterTypeApiError,_UniffiLib.uniffi_uniffi_bindings_p2p_fn_func_add_vote,
         _UniffiConverterString.lower(topic),
         _UniffiConverterString.lower(message),
-        _UniffiConverterTypeVote.lower(vote)),
-        _UniffiLib.ffi_uniffi_bindings_p2p_rust_future_poll_void,
-        _UniffiLib.ffi_uniffi_bindings_p2p_rust_future_complete_void,
-        _UniffiLib.ffi_uniffi_bindings_p2p_rust_future_free_void,
-        # lift function
-        lambda val: None,
-        
-        
-    # Error FFI converter
-_UniffiConverterTypeApiError,
+        _UniffiConverterTypeVote.lower(vote))
 
-    )
-async def all_content() -> "typing.List[DataContent]":
 
-    return await _uniffi_rust_call_async(
-        _UniffiLib.uniffi_uniffi_bindings_p2p_fn_func_all_content(),
-        _UniffiLib.ffi_uniffi_bindings_p2p_rust_future_poll_rust_buffer,
-        _UniffiLib.ffi_uniffi_bindings_p2p_rust_future_complete_rust_buffer,
-        _UniffiLib.ffi_uniffi_bindings_p2p_rust_future_free_rust_buffer,
-        # lift function
-        _UniffiConverterSequenceTypeDataContent.lift,
-        
-    # Error FFI converter
-_UniffiConverterTypeApiError,
+def all_content() -> "typing.List[DataContent]":
+    return _UniffiConverterSequenceTypeDataContent.lift(_uniffi_rust_call_with_error(_UniffiConverterTypeApiError,_UniffiLib.uniffi_uniffi_bindings_p2p_fn_func_all_content,))
 
-    )
+
+def connection_data() -> "typing.Optional[ConnectionData]":
+    return _UniffiConverterOptionalTypeConnectionData.lift(_uniffi_rust_call(_UniffiLib.uniffi_uniffi_bindings_p2p_fn_func_connection_data,))
+
+
+def download_connection_data() -> "ConnectionData":
+    return _UniffiConverterTypeConnectionData.lift(_uniffi_rust_call(_UniffiLib.uniffi_uniffi_bindings_p2p_fn_func_download_connection_data,))
+
 
 def dummy_raw_message(topic: "str",message: "str") -> None:
     _UniffiConverterString.check_lower(topic)
@@ -1916,185 +2292,136 @@ def dummy_start(server_address: "str",peer_id: "str",username: "str") -> None:
         _UniffiConverterString.lower(peer_id),
         _UniffiConverterString.lower(username))
 
-async def get_reputation(peer_id: "str",topic: "str") -> "float":
 
+def get_my_topics() -> "typing.List[Topic]":
+    return _UniffiConverterSequenceTypeTopic.lift(_uniffi_rust_call(_UniffiLib.uniffi_uniffi_bindings_p2p_fn_func_get_my_topics,))
+
+
+def get_reputation(peer_id: "str",topic: "str") -> "float":
     _UniffiConverterString.check_lower(peer_id)
     
     _UniffiConverterString.check_lower(topic)
     
-    return await _uniffi_rust_call_async(
-        _UniffiLib.uniffi_uniffi_bindings_p2p_fn_func_get_reputation(
+    return _UniffiConverterFloat.lift(_uniffi_rust_call_with_error(_UniffiConverterTypeApiError,_UniffiLib.uniffi_uniffi_bindings_p2p_fn_func_get_reputation,
         _UniffiConverterString.lower(peer_id),
-        _UniffiConverterString.lower(topic)),
-        _UniffiLib.ffi_uniffi_bindings_p2p_rust_future_poll_f32,
-        _UniffiLib.ffi_uniffi_bindings_p2p_rust_future_complete_f32,
-        _UniffiLib.ffi_uniffi_bindings_p2p_rust_future_free_f32,
-        # lift function
-        _UniffiConverterFloat.lift,
-        
-    # Error FFI converter
-_UniffiConverterTypeApiError,
+        _UniffiConverterString.lower(topic)))
 
-    )
-async def get_reputations(topic: "str") -> "typing.List[Reputation]":
 
+def get_reputations(topic: "str") -> "typing.List[Reputation]":
     _UniffiConverterString.check_lower(topic)
     
-    return await _uniffi_rust_call_async(
-        _UniffiLib.uniffi_uniffi_bindings_p2p_fn_func_get_reputations(
-        _UniffiConverterString.lower(topic)),
-        _UniffiLib.ffi_uniffi_bindings_p2p_rust_future_poll_rust_buffer,
-        _UniffiLib.ffi_uniffi_bindings_p2p_rust_future_complete_rust_buffer,
-        _UniffiLib.ffi_uniffi_bindings_p2p_rust_future_free_rust_buffer,
-        # lift function
-        _UniffiConverterSequenceTypeReputation.lift,
-        
-    # Error FFI converter
+    return _UniffiConverterSequenceTypeReputation.lift(_uniffi_rust_call(_UniffiLib.uniffi_uniffi_bindings_p2p_fn_func_get_reputations,
+        _UniffiConverterString.lower(topic)))
 
-    None,
 
-    )
-async def get_status_vote(key: "str") -> "typing.Optional[Votation]":
+def get_runtime_content_to_validate() -> "typing.List[RuntimePendingContent]":
+    return _UniffiConverterSequenceTypeRuntimePendingContent.lift(_uniffi_rust_call(_UniffiLib.uniffi_uniffi_bindings_p2p_fn_func_get_runtime_content_to_validate,))
 
+
+def get_status_vote(key: "str") -> "typing.Optional[Votation]":
     _UniffiConverterString.check_lower(key)
     
-    return await _uniffi_rust_call_async(
-        _UniffiLib.uniffi_uniffi_bindings_p2p_fn_func_get_status_vote(
-        _UniffiConverterString.lower(key)),
-        _UniffiLib.ffi_uniffi_bindings_p2p_rust_future_poll_rust_buffer,
-        _UniffiLib.ffi_uniffi_bindings_p2p_rust_future_complete_rust_buffer,
-        _UniffiLib.ffi_uniffi_bindings_p2p_rust_future_free_rust_buffer,
-        # lift function
-        _UniffiConverterOptionalTypeVotation.lift,
-        
-    # Error FFI converter
-_UniffiConverterTypeApiError,
+    return _UniffiConverterOptionalTypeVotation.lift(_uniffi_rust_call_with_error(_UniffiConverterTypeApiError,_UniffiLib.uniffi_uniffi_bindings_p2p_fn_func_get_status_vote,
+        _UniffiConverterString.lower(key)))
 
-    )
-async def register_topic(topic: "str") -> None:
 
+def get_status_voteses() -> "typing.List[VoteStatus]":
+    return _UniffiConverterSequenceTypeVoteStatus.lift(_uniffi_rust_call(_UniffiLib.uniffi_uniffi_bindings_p2p_fn_func_get_status_voteses,))
+
+
+def new_key_available(topic: "str",content: "str") -> "str":
     _UniffiConverterString.check_lower(topic)
     
-    return await _uniffi_rust_call_async(
-        _UniffiLib.uniffi_uniffi_bindings_p2p_fn_func_register_topic(
-        _UniffiConverterString.lower(topic)),
-        _UniffiLib.ffi_uniffi_bindings_p2p_rust_future_poll_void,
-        _UniffiLib.ffi_uniffi_bindings_p2p_rust_future_complete_void,
-        _UniffiLib.ffi_uniffi_bindings_p2p_rust_future_free_void,
-        # lift function
-        lambda val: None,
-        
-        
-    # Error FFI converter
-_UniffiConverterTypeApiError,
-
-    )
-async def remote_new_topic(topic: "str") -> None:
-
-    _UniffiConverterString.check_lower(topic)
+    _UniffiConverterString.check_lower(content)
     
-    return await _uniffi_rust_call_async(
-        _UniffiLib.uniffi_uniffi_bindings_p2p_fn_func_remote_new_topic(
-        _UniffiConverterString.lower(topic)),
-        _UniffiLib.ffi_uniffi_bindings_p2p_rust_future_poll_void,
-        _UniffiLib.ffi_uniffi_bindings_p2p_rust_future_complete_void,
-        _UniffiLib.ffi_uniffi_bindings_p2p_rust_future_free_void,
-        # lift function
-        lambda val: None,
-        
-        
-    # Error FFI converter
-_UniffiConverterTypeApiError,
+    return _UniffiConverterString.lift(_uniffi_rust_call_with_error(_UniffiConverterTypeApiError,_UniffiLib.uniffi_uniffi_bindings_p2p_fn_func_new_key_available,
+        _UniffiConverterString.lower(topic),
+        _UniffiConverterString.lower(content)))
 
-    )
-async def start(server_address: "str",peer_id: "str",username: "str") -> None:
 
+def register_topic(name: "str",description: "str") -> None:
+    _UniffiConverterString.check_lower(name)
+    
+    _UniffiConverterString.check_lower(description)
+    
+    _uniffi_rust_call_with_error(_UniffiConverterTypeApiError,_UniffiLib.uniffi_uniffi_bindings_p2p_fn_func_register_topic,
+        _UniffiConverterString.lower(name),
+        _UniffiConverterString.lower(description))
+
+
+def remote_new_topic(name: "str",description: "str") -> None:
+    _UniffiConverterString.check_lower(name)
+    
+    _UniffiConverterString.check_lower(description)
+    
+    _uniffi_rust_call_with_error(_UniffiConverterTypeApiError,_UniffiLib.uniffi_uniffi_bindings_p2p_fn_func_remote_new_topic,
+        _UniffiConverterString.lower(name),
+        _UniffiConverterString.lower(description))
+
+
+def start(server_address: "str",peer_id: "str",username: "str") -> None:
     _UniffiConverterString.check_lower(server_address)
     
     _UniffiConverterString.check_lower(peer_id)
     
     _UniffiConverterString.check_lower(username)
     
-    return await _uniffi_rust_call_async(
-        _UniffiLib.uniffi_uniffi_bindings_p2p_fn_func_start(
+    _uniffi_rust_call_with_error(_UniffiConverterTypeApiError,_UniffiLib.uniffi_uniffi_bindings_p2p_fn_func_start,
         _UniffiConverterString.lower(server_address),
         _UniffiConverterString.lower(peer_id),
-        _UniffiConverterString.lower(username)),
-        _UniffiLib.ffi_uniffi_bindings_p2p_rust_future_poll_void,
-        _UniffiLib.ffi_uniffi_bindings_p2p_rust_future_complete_void,
-        _UniffiLib.ffi_uniffi_bindings_p2p_rust_future_free_void,
-        # lift function
-        lambda val: None,
-        
-        
-    # Error FFI converter
-_UniffiConverterTypeApiError,
+        _UniffiConverterString.lower(username))
 
-    )
-async def validate_content(id_votation: "str",topic: "str",content: "str") -> None:
 
-    _UniffiConverterString.check_lower(id_votation)
-    
+def validate_content(topic: "str",content: "str") -> "str":
     _UniffiConverterString.check_lower(topic)
     
     _UniffiConverterString.check_lower(content)
     
-    return await _uniffi_rust_call_async(
-        _UniffiLib.uniffi_uniffi_bindings_p2p_fn_func_validate_content(
-        _UniffiConverterString.lower(id_votation),
+    return _UniffiConverterString.lift(_uniffi_rust_call_with_error(_UniffiConverterTypeApiError,_UniffiLib.uniffi_uniffi_bindings_p2p_fn_func_validate_content,
         _UniffiConverterString.lower(topic),
-        _UniffiConverterString.lower(content)),
-        _UniffiLib.ffi_uniffi_bindings_p2p_rust_future_poll_void,
-        _UniffiLib.ffi_uniffi_bindings_p2p_rust_future_complete_void,
-        _UniffiLib.ffi_uniffi_bindings_p2p_rust_future_free_void,
-        # lift function
-        lambda val: None,
-        
-        
-    # Error FFI converter
-_UniffiConverterTypeApiError,
+        _UniffiConverterString.lower(content)))
 
-    )
-async def voters(key: "str",topic: "str") -> "typing.List[str]":
 
+def voters(key: "str",topic: "str") -> "typing.List[str]":
     _UniffiConverterString.check_lower(key)
     
     _UniffiConverterString.check_lower(topic)
     
-    return await _uniffi_rust_call_async(
-        _UniffiLib.uniffi_uniffi_bindings_p2p_fn_func_voters(
+    return _UniffiConverterSequenceString.lift(_uniffi_rust_call_with_error(_UniffiConverterTypeApiError,_UniffiLib.uniffi_uniffi_bindings_p2p_fn_func_voters,
         _UniffiConverterString.lower(key),
-        _UniffiConverterString.lower(topic)),
-        _UniffiLib.ffi_uniffi_bindings_p2p_rust_future_poll_rust_buffer,
-        _UniffiLib.ffi_uniffi_bindings_p2p_rust_future_complete_rust_buffer,
-        _UniffiLib.ffi_uniffi_bindings_p2p_rust_future_free_rust_buffer,
-        # lift function
-        _UniffiConverterSequenceString.lift,
-        
-    # Error FFI converter
-_UniffiConverterTypeApiError,
+        _UniffiConverterString.lower(topic)))
 
-    )
 
 __all__ = [
     "InternalError",
     "ApiError",
     "StateContent",
+    "VoteStatusKind",
     "ConnectionData",
     "DataContent",
     "Event",
+    "Pair",
     "Reputation",
+    "RuntimePendingContent",
+    "Topic",
     "Votation",
     "Vote",
     "VoteId",
+    "VoteStatus",
     "add_vote",
     "all_content",
+    "connection_data",
+    "download_connection_data",
     "dummy_raw_message",
     "dummy_set_listener",
     "dummy_start",
+    "get_my_topics",
     "get_reputation",
     "get_reputations",
+    "get_runtime_content_to_validate",
     "get_status_vote",
+    "get_status_voteses",
+    "new_key_available",
     "register_topic",
     "remote_new_topic",
     "start",

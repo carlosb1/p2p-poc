@@ -23,7 +23,7 @@ impl ValidatorHandler {
 
 impl MessageHandler for ValidatorHandler {
     fn handle_message(&mut self, source_peer: PeerId, data: &[u8], topic: &str) -> Option<Vec<u8>> {
-        log::info!(
+        log::debug!(
             "{:?} - Received message from {}: {:?}",
             self.peer_id.clone(),
             source_peer,
@@ -41,7 +41,7 @@ impl MessageHandler for ValidatorHandler {
                     content,
                     id_votation,
                 } => {
-                    log::info!("Received Interested message for content: {}", content);
+                    log::debug!("Received Interested message for content: {}", content);
                     let str_response: String =
                         serde_json::to_string(&ContentMessage::InterestedResponse {
                             id_votation: id_votation.clone(),
@@ -51,7 +51,7 @@ impl MessageHandler for ValidatorHandler {
                 }
                 ContentMessage::InterestedResponse { id_votation } => {
                     // interested voters
-                    log::info!(
+                    log::debug!(
                         "Received response for votation: {} from {}",
                         id_votation,
                         source_peer.to_string()
@@ -71,7 +71,7 @@ impl MessageHandler for ValidatorHandler {
                     ttl_secs: _,
                     signature: _,
                 } => {
-                    log::info!(
+                    log::debug!(
                         "Received  VoteLeaderRequest (petition to be part of the vote) for votation: {}",
                         id_votation
                     );
@@ -103,7 +103,7 @@ impl MessageHandler for ValidatorHandler {
                     id_votation,
                     result,
                 } => {
-                    log::info!("Received ResultVote for votation: {}", id_votation);
+                    log::debug!("Received ResultVote for votation: {}", id_votation);
 
                     // we receive a vote result
 
@@ -114,10 +114,10 @@ impl MessageHandler for ValidatorHandler {
                         return None;
                     };
 
-                    log::info!("status extracted votation={:?}", votation);
+                    log::debug!("status extracted votation={:?}", votation);
 
                     /* are you the leader?  */
-                    log::info!(
+                    log::debug!(
                         "leader_id={:?}, my_self_str_peer_id={:?} source_peer={:?}",
                         votation.leader_id,
                         self.peer_id.to_string(),
@@ -126,7 +126,7 @@ impl MessageHandler for ValidatorHandler {
 
                     // I am the leader? only leader can count votes
                     if votation.leader_id != self.peer_id.to_string() {
-                        log::info!(
+                        log::debug!(
                             "Discarding result vote petition I am not the leader votation_leader={:?} and my id={:?}",
                             votation,
                             self.peer_id.to_string()
@@ -171,14 +171,14 @@ impl MessageHandler for ValidatorHandler {
                         .collect();
 
                     /* expire votation */
-                    log::info!("Pending for votation={:?}", votation);
-                    log::info!("Recollected votes={:?}", recollected_votes);
-                    log::info!("Expected_votes votes={:?}", expected_votes);
+                    log::debug!("Pending for votation={:?}", votation);
+                    log::debug!("Recollected votes={:?}", recollected_votes);
+                    log::debug!("Expected_votes votes={:?}", expected_votes);
 
                     let expires_at = votation.timestamp + EXPIRY_DURATION_IN_DAYS;
                     let now = Utc::now();
                     if !expected_votes.is_subset(&recollected_votes) && now > expires_at {
-                        log::info!("⛔ Vote expired, we are going to decrease reputation");
+                        log::debug!("⛔ Vote expired, we are going to decrease reputation");
 
                         let not_votes: HashSet<String> = recollected_votes
                             .difference(&expected_votes)
@@ -196,7 +196,7 @@ impl MessageHandler for ValidatorHandler {
 
                     if expected_votes.is_subset(&recollected_votes) {
                         /* update reputations */
-                        log::info!("Updating reputations for all votes");
+                        log::debug!("Updating reputations for all votes");
                         let reputations = expected_votes
                             .iter()
                             .map(|v| (v.clone(), INCR_REPUTATION))
@@ -241,7 +241,7 @@ impl MessageHandler for ValidatorHandler {
                     content,
                     approved,
                 } => {
-                    log::info!(
+                    log::debug!(
                         "Received IncludeNewValidatedContent for votation: {}",
                         id_votation
                     );

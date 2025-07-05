@@ -12,8 +12,8 @@ use tokio::time::sleep;
 
 use messages_types::ChatCommand;
 
-use crate::models::db::DataContent;
 use crate::models::db::Votation;
+use crate::models::db::{DataContent, VoteStatus};
 use crate::models::messages::{ContentMessage, Vote, DEFAULT_TOPIC};
 use crate::protocol::MessageHandler;
 use crate::{
@@ -53,7 +53,7 @@ impl ValidatorClient {
             .next()
             .is_some();
         if is_added {
-            log::info!("Content already added: {}", content);
+            log::debug!("Content already added: {}", content);
             return Err(anyhow!("Content already added: {}", content));
         }
         let key = db::create_key_for_voting_db(content, topic, "pending", 1);
@@ -66,12 +66,13 @@ impl ValidatorClient {
         topic: &str,
         content: &str,
     ) -> anyhow::Result<()> {
+        self.add_validation_request(key.to_string(), topic.to_string(), content.to_string())
+            .await;
+        // send petition
         let message = ContentMessage::Interested {
             id_votation: key.to_string(),
             content: content.to_string(),
         };
-        self.add_validation_request(key.to_string(), topic.to_string(), content.to_string())
-            .await;
         self.send(topic.to_string(), &message).await?;
         Ok(())
     }
@@ -114,7 +115,7 @@ impl ValidatorClient {
 
     pub async fn add_vote(&self, id_votation: &str, topic: &str, vote: Vote) -> anyhow::Result<()> {
         let Some(votation) = db::get_status_vote(&self.db, id_votation) else {
-            log::info!("You are not included in this votation={}", id_votation);
+            log::debug!("You are not included in this votation={}", id_votation);
             return Ok(());
         };
 
@@ -124,7 +125,7 @@ impl ValidatorClient {
         })?;
 
         if (votation.leader_id == self.peer_id.to_string()) {
-            log::info!(
+            log::debug!(
                 "I am the leader with id={} for votation={} can I added it locally",
                 votation.leader_id.clone(),
                 id_votation
@@ -136,7 +137,7 @@ impl ValidatorClient {
             return Ok(());
         }
 
-        log::info!("Sending a remote publish message");
+        log::debug!("Sending a remote publish message");
         self.command_tx
             .send(ChatCommand::Publish(topic.to_string(), data))
             .await
@@ -149,12 +150,6 @@ impl ValidatorClient {
             .send(ChatCommand::Publish(topic, serde_json::to_vec(message)?))
             .await?;
         Ok(())
-    }
-
-    pub async fn get_content_to_evaluate(&self) -> Vec<(String, String, String, Duration)> {
-        //key, topic, content, duration
-        let content_to_evaluate = self.content_to_evaluate.lock().await;
-        content_to_evaluate.clone()
     }
 
     pub fn get_voters(&self, key: &str, topic: &str) -> anyhow::Result<Vec<String>> {
@@ -176,6 +171,16 @@ impl ValidatorClient {
         db::get_status_vote(&self.db, key)
     }
 
+    pub fn get_status_voteses(&self) -> Vec<VoteStatus> {
+        db::get_status_voteses(&self.db)
+    }
+
+    pub async fn get_content_to_evaluate(&self) -> Vec<(String, String, String, Duration)> {
+        //key, topic, content, duration
+        let content_to_evaluate = self.content_to_evaluate.lock().await;
+        content_to_evaluate.clone()
+    }
+
     pub async fn wait_for_validators(&self) -> anyhow::Result<()> {
         let check_interval = Duration::from_millis(500);
         let start = tokio::time::Instant::now();
@@ -189,7 +194,7 @@ impl ValidatorClient {
                     .get(index)
                     .ok_or(anyhow!("No request to validate at index {}", index))?;
                 let (key, topic, content, timeout) = req_to_validate;
-                log::info!(
+                log::debug!(
                     "Checking content to evaluate: key={}, topic={}, content={} timeout={:?}",
                     key,
                     topic,
@@ -225,9 +230,9 @@ impl ValidatorClient {
                         filtered_votes.push((possible_voter_peer_id, rep));
                     }
                 }
-                log::info!("Filtered votes for key {}: {:?}", key, filtered_votes);
+                log::debug!("Filtered votes for key {}: {:?}", key, filtered_votes);
                 if filtered_votes.len() >= MEMBERS_FOR_CONSENSUS {
-                    log::info!(
+                    log::debug!(
                         "Enough votes collected for key {}: {:?}",
                         key,
                         filtered_votes
@@ -235,7 +240,7 @@ impl ValidatorClient {
                     let filtered_votes: Vec<(String, f32)> =
                         filtered_votes[0..MEMBERS_FOR_CONSENSUS].to_vec();
                     let leader_peer = filtered_votes.first().expect("No leader available");
-                    log::info!("Selected leader for voting: {:?}", leader_peer);
+                    log::debug!("Selected leader for voting: {:?}", leader_peer);
                     let vote_request = ContentMessage::new_vote_leader_request(
                         key.clone(),
                         content.to_string(),

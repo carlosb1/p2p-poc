@@ -2,15 +2,18 @@ mod dummy;
 
 use messages_p2p::p2p::node::NetworkClientNode;
 use messages_p2p::{Keypair, PeerId};
+use std::collections::HashMap;
 
 use messages_types::messages::ChatCommand;
 
 use crate::dummy::MyEventHandler;
 use crate::APIError::ConcurrencyError;
 use messages_p2p::p2p::api::APIClient;
+//use chrono::TimeZone;
+use once_cell::sync::Lazy;
+use serde::Deserialize;
 use std::sync::{Arc, OnceLock};
 use std::thread;
-//use chrono::TimeZone;
 use std::time::{SystemTime, UNIX_EPOCH};
 use tokio::runtime::Runtime;
 use tokio::sync::{mpsc, Mutex};
@@ -26,11 +29,15 @@ pub fn init_logging() {
 
 #[cfg(not(target_os = "android"))]
 pub fn init_logging() {
-    let _ = env_logger::builder()
+    // Usa la variable de entorno si está presente
+    let env = std::env::var("RUST_LOG").unwrap_or_else(|_| "info".to_string());
+
+    let _ = env_logger::Builder::new()
+        .parse_filters(&env)
         .is_test(false)
-        .filter_level(log::LevelFilter::Debug) // for testing
         .try_init();
-    log::info!("Logging initialized for CLI/Desktop");
+
+    log::info!("Logging initialized (level from RUST_LOG or default to info)");
 }
 
 pub struct Event {
@@ -41,10 +48,29 @@ pub trait EventListener: Send + Sync {
     fn on_event(&self, event: Event) -> String;
 }
 
+const MAGIC_SERVER_LINK_ADDRESS: &str = "http://3.248.210.253:3000/tracker";
+
 static LISTENER: OnceLock<Arc<dyn EventListener>> = OnceLock::new();
 static DUMMY_NODE_TX: OnceLock<mpsc::Sender<ChatCommand>> = OnceLock::new();
 
 static CLIENT: OnceLock<Mutex<APIClient>> = OnceLock::new();
+
+static STATEDATA: OnceLock<Mutex<ConnectionData>> = OnceLock::new();
+
+// Creamos un runtime global
+pub static TOKIO_RT: Lazy<Runtime> =
+    Lazy::new(|| Runtime::new().expect("failed to create Tokio runtime"));
+
+// Función que usa el runtime para correr async
+pub fn block_on<F, R>(fut: F) -> R
+where
+    F: std::future::Future<Output = R> + Send + 'static,
+    R: Send + 'static,
+{
+    std::thread::spawn(move || TOKIO_RT.block_on(fut))
+        .join()
+        .expect("Thread panicked during block_on execution")
+}
 
 #[derive(Debug, thiserror::Error)]
 pub enum APIError {
@@ -55,12 +81,34 @@ pub enum APIError {
     #[error("RuntimeError msg={msg}")]
     RuntimeError { msg: String },
 }
-
-struct ConnectionData {
-    server_peer_id: String,
-    server_address: String,
-    client_peer_id: String,
+struct RuntimePendingContent {
+    key: String,
+    topic: String,
+    content: String,
+    wait_timeout: SystemTime,
 }
+
+pub struct Topic {
+    pub name: String,
+    pub description: String,
+}
+
+impl From<messages_p2p::Topic> for Topic {
+    fn from(value: messages_p2p::Topic) -> Self {
+        Topic {
+            name: value.name,
+            description: value.description,
+        }
+    }
+}
+
+#[derive(Debug, Clone)]
+struct ConnectionData {
+    server_id: String,
+    server_address: Vec<String>,
+    client_id: Option<String>,
+}
+
 pub struct Vote {
     good: bool,
 }
@@ -108,15 +156,62 @@ enum StateContent {
 }
 
 #[derive(Debug, Clone)]
+pub struct Reputation {
+    name: String,
+    repu: f32,
+}
+
+#[derive(Debug, Clone)]
 pub struct DataContent {
     pub id_votation: String,
     pub content: String,
     pub approved: StateContent,
 }
+
 #[derive(Debug, Clone)]
-pub struct Reputation {
-    name: String,
-    repu: f32,
+pub enum VoteStatusKind {
+    Pending,
+    Accepted,
+    Rejected,
+}
+
+#[derive(Debug, Clone)]
+pub struct VoteStatus {
+    pub kind: VoteStatusKind,
+    pub pending_data: Option<Vec<Pair>>,
+}
+
+#[derive(Debug, Clone)]
+pub struct Pair {
+    pub key: String,
+    pub value: f32,
+}
+
+impl From<&messages_p2p::VoteStatus> for VoteStatus {
+    fn from(status: &messages_p2p::VoteStatus) -> Self {
+        match status {
+            messages_p2p::VoteStatus::Pending(pairs) => VoteStatus {
+                kind: VoteStatusKind::Pending,
+                pending_data: Some(
+                    pairs
+                        .into_iter()
+                        .map(|(k, v)| Pair {
+                            key: k.to_string(),
+                            value: *v,
+                        })
+                        .collect(),
+                ),
+            },
+            messages_p2p::VoteStatus::Accepted => VoteStatus {
+                kind: VoteStatusKind::Accepted,
+                pending_data: None,
+            },
+            messages_p2p::VoteStatus::Rejected => VoteStatus {
+                kind: VoteStatusKind::Rejected,
+                pending_data: None,
+            },
+        }
+    }
 }
 
 impl From<messages_p2p::DataContent> for DataContent {
@@ -133,142 +228,337 @@ impl From<messages_p2p::DataContent> for DataContent {
     }
 }
 
-pub async fn start(
+pub fn connection_data() -> Option<ConnectionData> {
+    block_on(async {
+        let Some(mutex_state_data) = STATEDATA.get() else {
+            log::debug!("State data is not initialized");
+            return None;
+        };
+        let lock = mutex_state_data; // Get &Mutex<ConnectionData>
+        let data = lock.lock().await; // Acquire lock
+        Some(data.clone()) // Clone the inner data
+    })
+}
+
+pub fn download_connection_data() -> ConnectionData {
+    block_on(async {
+        #[derive(Debug, Deserialize)]
+        struct TrackerInfo {
+            id: String,
+            addresses: Vec<String>,
+        }
+
+        let response = reqwest::get(MAGIC_SERVER_LINK_ADDRESS).await.unwrap();
+        let tracker_info: TrackerInfo = response.json().await.unwrap();
+        ConnectionData {
+            server_id: tracker_info.id,
+            server_address: tracker_info.addresses.clone(),
+            client_id: None,
+        }
+    })
+}
+pub fn start(
     server_address: String,
     server_peer_id: String,
     username: String,
 ) -> Result<(), APIError> {
-    init_logging();
-    let keypair = Keypair::generate_ed25519();
-    let peer_id = PeerId::from(keypair.public());
+    block_on(async move {
+        init_logging();
+        let keypair = Keypair::generate_ed25519();
+        let peer_id = PeerId::from(keypair.public());
 
-    let node = APIClient::from_server_params(
-        keypair,
-        Some(peer_id.to_string()),
-        &server_peer_id,
-        &server_address,
-    )
-    .map_err(|e| APIError::ConnectionError {
-        addr: server_address.clone(),
-        msg: e.to_string(),
-    })?;
-
-    // Guardamos el cliente sincronizado
-    CLIENT.set(Mutex::new(node)).map_err(|_| ConcurrencyError {
-        msg: "CLI not set".to_string(),
-    })?;
-
-    log::debug!(
-        "Starting client with peer id: {:?} and server address: {:?}",
-        peer_id,
-        server_address
-    );
-
-    // Lanzamos el loop `start()` como tarea de fondo
-    let client = CLIENT.get().unwrap().clone();
-    tokio::spawn(async move {
-        let mut guard = client.lock().await;
-        if let Err(e) = guard.start().await {
-            log::error!("Client failed: {:?}", e);
-        }
-    });
-
-    Ok(())
-}
-
-pub async fn remote_new_topic(topic: String) -> Result<(), APIError> {
-    let client = CLIENT.get().unwrap().clone();
-    let mut locked = client.lock().await;
-    locked
-        .remote_new_topic(&topic)
-        .await
+        let node = APIClient::from_server_params(
+            keypair,
+            Some(peer_id.to_string()),
+            &server_peer_id,
+            &server_address,
+        )
         .map_err(|e| APIError::ConnectionError {
-            addr: topic.clone(),
+            addr: server_address.clone(),
             msg: e.to_string(),
-        })
+        })?;
+
+        STATEDATA
+            .set(Mutex::new(ConnectionData {
+                server_id: server_peer_id.clone(),
+                server_address: vec![server_address.clone()],
+                client_id: Some(peer_id.to_string()),
+            }))
+            .map_err(|_| ConcurrencyError {
+                msg: "STATE DATA not set".to_string(),
+            })?;
+
+        CLIENT.set(Mutex::new(node)).map_err(|_| ConcurrencyError {
+            msg: "CLIENT not set".to_string(),
+        })?;
+
+        log::debug!(
+            "Starting client with peer id: {:?} and server address: {:?}",
+            peer_id,
+            server_address
+        );
+
+        // ✅ Ejecutamos la tarea async en otro hilo
+        let client = CLIENT.get().unwrap().clone();
+        std::thread::spawn(move || {
+            TOKIO_RT.block_on(async move {
+                let mut guard = client.lock().await;
+                if let Err(e) = guard.start().await {
+                    log::error!("Client failed: {:?}", e);
+                }
+            });
+        });
+
+        Ok(())
+    })
 }
 
-pub async fn register_topic(topic: String) -> Result<(), APIError> {
-    let client = CLIENT.get().unwrap().clone();
-    let mut locked = client.lock().await;
-    locked
-        .register_topic(&topic)
-        .await
-        .map_err(|e| APIError::ConnectionError {
-            addr: topic.clone(),
-            msg: e.to_string(),
-        })
+//TODO add name and description
+pub fn remote_new_topic(name: String, description: String) -> Result<(), APIError> {
+    block_on(async move {
+        let Some(mutex_client) = CLIENT.get() else {
+            log::debug!("Client is not initialized yet");
+            return Err(APIError::RuntimeError {
+                msg: "Client is not initialized yet".to_string(),
+            });
+        };
+        let client = mutex_client.clone();
+        let mut locked = client.lock().await;
+        locked
+            .remote_new_topic(&messages_p2p::Topic {
+                name: name.clone(),
+                description,
+            })
+            .await
+            .map_err(|e| APIError::ConnectionError {
+                addr: name.clone(),
+                msg: e.to_string(),
+            })
+    })
 }
 
-pub async fn validate_content(key: String, topic: String, content: String) -> Result<(), APIError> {
-    let client = CLIENT.get().unwrap().clone();
-    let mut locked = client.lock().await;
-    locked
-        .validate_content(&key, &topic, &content)
-        .await
-        .map_err(|e| APIError::RuntimeError { msg: e.to_string() })
+pub fn register_topic(name: String, description: String) -> Result<(), APIError> {
+    block_on(async move {
+        let Some(mutex_client) = CLIENT.get() else {
+            log::debug!("Client is not initialized yet");
+            return Err(APIError::RuntimeError {
+                msg: "Client is not initialized yet".to_string(),
+            });
+        };
+        let client = mutex_client.clone();
+        let mut locked = client.lock().await;
+        locked
+            .register_topic(&messages_p2p::Topic {
+                name: name.clone(),
+                description,
+            })
+            .await
+            .map_err(|e| APIError::ConnectionError {
+                addr: name.clone(),
+                msg: e.to_string(),
+            })
+    })
 }
 
-pub async fn all_content() -> Result<Vec<DataContent>, APIError> {
-    let client = CLIENT.get().unwrap().clone();
-    let locked = client.lock().await;
-    let results = locked.all_content();
-    Ok(results
-        .iter()
-        .map(|r| DataContent::from(r.clone()))
-        .collect())
+pub fn get_my_topics() -> Vec<Topic> {
+    block_on(async {
+        let Some(mutex_client) = CLIENT.get() else {
+            log::debug!("Client is not initialized yet");
+            return vec![];
+        };
+        let client = mutex_client.clone();
+        let mut locked = client.lock().await;
+        locked
+            .get_my_topics()
+            .await
+            .iter()
+            .map(|t| Topic::from(t.clone()))
+            .collect::<Vec<Topic>>()
+    })
 }
 
-pub async fn get_status_vote(key: String) -> Result<Option<Votation>, APIError> {
-    let client = CLIENT.get().unwrap().clone();
-    let locked = client.lock().await;
-    let result = locked.get_status_vote(&key);
-    Ok(result.map(Votation::from))
+pub fn new_key_available(topic: String, content: String) -> Result<String, APIError> {
+    block_on(async move {
+        let Some(mutex_client) = CLIENT.get() else {
+            log::debug!("Client is not initialized yet");
+            return Err(APIError::RuntimeError {
+                msg: "Client is not initialized yet".to_string(),
+            });
+        };
+        let client = mutex_client.clone();
+        let mut locked = client.lock().await;
+        locked
+            .new_key_available(&topic, &content)
+            .map_err(|e| APIError::RuntimeError { msg: e.to_string() })
+    })
 }
 
-pub async fn add_vote(id_votation: String, topic: String, vote: Vote) -> Result<(), APIError> {
-    let parser_vote = if vote.good {
-        messages_p2p::Vote::Yes
-    } else {
-        messages_p2p::Vote::No
-    };
+pub fn add_vote(id_votation: String, topic: String, vote: Vote) -> Result<(), APIError> {
+    block_on(async move {
+        let parser_vote = if vote.good {
+            messages_p2p::Vote::Yes
+        } else {
+            messages_p2p::Vote::No
+        };
 
-    let client = CLIENT.get().unwrap().clone();
-    let mut locked = client.lock().await;
-    locked
-        .add_vote(&id_votation, &topic, parser_vote)
-        .await
-        .map_err(|e| APIError::RuntimeError { msg: e.to_string() })
+        let Some(mutex_client) = CLIENT.get() else {
+            log::debug!("Client is not initialized yet");
+            return Err(APIError::RuntimeError {
+                msg: "Client is not initialized yet".to_string(),
+            });
+        };
+        let client = mutex_client.clone();
+        let mut locked = client.lock().await;
+        locked
+            .add_vote(&id_votation, &topic, parser_vote)
+            .await
+            .map_err(|e| APIError::RuntimeError { msg: e.to_string() })
+    })
 }
 
-pub async fn voters(key: String, topic: String) -> Result<Vec<String>, APIError> {
-    let client = CLIENT.get().unwrap().clone();
-    let mut locked = client.lock().await;
-    locked
-        .voters(&key, &topic)
-        .await
-        .map_err(|e| APIError::RuntimeError { msg: e.to_string() })
+pub fn voters(key: String, topic: String) -> Result<Vec<String>, APIError> {
+    block_on(async move {
+        let Some(mutex_client) = CLIENT.get() else {
+            log::debug!("Client is not initialized yet");
+            return Err(APIError::RuntimeError {
+                msg: "Client is not initialized yet".to_string(),
+            });
+        };
+        let client = mutex_client.clone();
+        let mut locked = client.lock().await;
+        locked
+            .voters(&key, &topic)
+            .await
+            .map_err(|e| APIError::RuntimeError { msg: e.to_string() })
+    })
 }
 
-pub async fn get_reputation(peer_id: String, topic: String) -> Result<f32, APIError> {
-    let client = CLIENT.get().unwrap().clone();
-    let locked = client.lock().await;
-    locked
-        .get_reputation(&peer_id, &topic)
-        .map_err(|e| APIError::RuntimeError { msg: e.to_string() })
+pub fn get_reputation(peer_id: String, topic: String) -> Result<f32, APIError> {
+    block_on(async move {
+        let Some(mutex_client) = CLIENT.get() else {
+            log::debug!("Client is not initialized yet");
+            return Err(APIError::RuntimeError {
+                msg: "Client is not initialized yet".to_string(),
+            });
+        };
+        let client = mutex_client.clone();
+        let locked = client.lock().await;
+        locked
+            .get_reputation(&peer_id, &topic)
+            .map_err(|e| APIError::RuntimeError { msg: e.to_string() })
+    })
 }
 
-pub async fn get_reputations(topic: String) -> Vec<Reputation> {
-    let client = CLIENT.get().unwrap().clone();
-    let locked = client.lock().await;
-    locked
-        .get_reputations(&topic)
-        .iter()
-        .map(|(name, repu)| Reputation {
-            name: name.clone(),
-            repu: *repu,
-        })
-        .collect()
+pub fn get_reputations(topic: String) -> Vec<Reputation> {
+    block_on(async move {
+        let Some(mutex_client) = CLIENT.get() else {
+            log::debug!("Client is not initialized yet");
+            return vec![];
+        };
+        let client = mutex_client.clone();
+        let locked = client.lock().await;
+        locked
+            .get_reputations(&topic)
+            .iter()
+            .map(|(name, repu)| Reputation {
+                name: name.clone(),
+                repu: *repu,
+            })
+            .collect()
+    })
+}
+
+pub fn all_content() -> Result<Vec<DataContent>, APIError> {
+    block_on(async {
+        let Some(mutex_client) = CLIENT.get() else {
+            log::debug!("Client is not initialized yet");
+            return Err(APIError::RuntimeError {
+                msg: "Client is not initialized yet".to_string(),
+            });
+        };
+        let client = mutex_client.clone();
+        let locked = client.lock().await;
+        let results = locked.all_content();
+        Ok(results
+            .iter()
+            .map(|r| DataContent::from(r.clone()))
+            .collect())
+    })
+}
+
+pub fn validate_content(topic: String, content: String) -> Result<String, APIError> {
+    block_on(async move {
+        let Some(mutex_client) = CLIENT.get() else {
+            log::debug!("Client is not initialized yet");
+            return Err(APIError::RuntimeError {
+                msg: "Client is not initialized yet".to_string(),
+            });
+        };
+
+        let key = new_key_available(topic.clone(), content.clone())?;
+
+        let client = mutex_client.clone();
+        let mut locked = client.lock().await;
+        locked
+            .validate_content(&key, &topic, &content)
+            .await
+            .map_err(|e| APIError::RuntimeError { msg: e.to_string() })?;
+        Ok(key.clone())
+    })
+}
+
+pub fn get_status_vote(key: String) -> Result<Option<Votation>, APIError> {
+    block_on(async move {
+        let Some(mutex_client) = CLIENT.get() else {
+            log::debug!("Client is not initialized yet");
+            return Err(APIError::RuntimeError {
+                msg: "Client is not initialized yet".to_string(),
+            });
+        };
+        let client = mutex_client.clone();
+        let locked = client.lock().await;
+        let result = locked.get_status_vote(&key);
+        Ok(result.map(Votation::from))
+    })
+}
+
+pub fn get_status_voteses() -> Vec<VoteStatus> {
+    block_on(async {
+        let Some(mutex_client) = CLIENT.get() else {
+            log::debug!("Client is not initialized yet");
+            return vec![];
+        };
+        let client = mutex_client.clone();
+        let locked = client.lock().await;
+        locked
+            .get_status_voteses()
+            .iter()
+            .map(VoteStatus::from)
+            .collect()
+    })
+}
+
+pub fn get_runtime_content_to_validate() -> Vec<RuntimePendingContent> {
+    block_on(async {
+        let Some(mutex_client) = CLIENT.get() else {
+            log::debug!("Client is not initialized yet");
+            return vec![];
+        };
+        let client = mutex_client.clone();
+        let locked = client.lock().await;
+        let results = locked
+            .get_runtime_content_to_validate()
+            .await
+            .iter()
+            .map(|(a, b, c, time)| RuntimePendingContent {
+                key: a.clone(),
+                topic: b.clone(),
+                content: c.clone(),
+                wait_timeout: SystemTime::UNIX_EPOCH + (*time),
+            })
+            .collect();
+        results
+    })
 }
 
 pub fn dummy_start(server_address: String, peer_id: String, username: String) {

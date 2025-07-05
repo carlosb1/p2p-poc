@@ -5,10 +5,11 @@ use messages_types::ChatCommand;
 use protocol_p2p::client::ValidatorClient;
 use protocol_p2p::db::init_db;
 use protocol_p2p::handler::ValidatorHandler;
-use protocol_p2p::models::db::{DataContent, Votation};
+use protocol_p2p::models::db::{DataContent, Topic, Votation, VoteStatus};
 use protocol_p2p::models::messages::Vote;
 use protocol_p2p::{db, Db};
 use std::sync::Arc;
+use std::time::Duration;
 use tokio::sync::{mpsc, Mutex};
 
 pub const BUFFER_SIZE: usize = 32;
@@ -24,7 +25,6 @@ pub struct APIClient {
 
 pub async fn load_server_tracker_data(url: &str) -> anyhow::Result<(String, Vec<String>)> {
     use serde::Deserialize;
-    use reqwest::Error;
 
     #[derive(Debug, Deserialize)]
     struct NodeInfo {
@@ -35,8 +35,6 @@ pub async fn load_server_tracker_data(url: &str) -> anyhow::Result<(String, Vec<
     let response = reqwest::get(url).await?;
     let data: NodeInfo = response.json().await?;
     Ok((data.id, data.addresses))
-
-
 }
 
 impl APIClient {
@@ -114,54 +112,41 @@ impl APIClient {
         self.tx.clone()
     }
 
-    pub async fn validate_content(
-        &self,
-        key: &str,
-        topic: &str,
-        content: &str,
-    ) -> anyhow::Result<()> {
-     //  db::save_content_to_validate();
-
-        self.validator_client
-            .ask_validation(key, topic, content)
-            .await?;
-        Ok(())
-    }
-
-    pub async fn get_content_to_validate() {
-
-    }
-
-    pub async fn remote_new_topic(&self, topic: &str) -> anyhow::Result<()> {
-        match self.validator_client.remote_new_topic(topic).await {
+    pub async fn remote_new_topic(&self, topic: &Topic) -> anyhow::Result<()> {
+        match self
+            .validator_client
+            .remote_new_topic(topic.name.as_str())
+            .await
+        {
             Ok(_) => {
-                db::save_topic(&self.db, topic).await?;
+                db::save_topic(&self.db, &topic).await?;
                 Ok(())
-            },
+            }
             Err(e) => Err(anyhow::anyhow!(e)),
         }
     }
 
-    pub async fn register_topic(&self, topic: &str) -> anyhow::Result<()> {
-        match self.validator_client.register_topic(topic).await {
+    pub async fn register_topic(&self, topic: &Topic) -> anyhow::Result<()> {
+        match self
+            .validator_client
+            .register_topic(topic.name.as_str())
+            .await
+        {
             Ok(_) => {
                 db::save_topic(&self.db, topic).await?;
                 Ok(())
-            },
+            }
             Err(e) => Err(anyhow::anyhow!(e)),
         }
     }
 
-    pub async fn get_your_topics(&self) -> Vec<String> {
+    pub async fn get_my_topics(&self) -> Vec<Topic> {
         db::get_topics(&self.db).await
     }
 
-
-    pub fn new_key_for_content(&self, topic: &str, content: &str) -> anyhow::Result<String> {
+    pub fn new_key_available(&self, topic: &str, content: &str) -> anyhow::Result<String> {
         self.validator_client.new_key_available(topic, content)
     }
-
-
 
     pub async fn add_vote(&self, id_votation: &str, topic: &str, vote: Vote) -> anyhow::Result<()> {
         self.validator_client
@@ -184,8 +169,27 @@ impl APIClient {
         self.validator_client.all_content()
     }
 
+    pub async fn validate_content(
+        &self,
+        key: &str,
+        topic: &str,
+        content: &str,
+    ) -> anyhow::Result<()> {
+        self.validator_client
+            .ask_validation(key, topic, content)
+            .await?;
+        Ok(())
+    }
+
     pub fn get_status_vote(&self, key: &str) -> Option<Votation> {
         self.validator_client.get_status_vote(key)
+    }
+    pub fn get_status_voteses(&self) -> Vec<VoteStatus> {
+        self.validator_client.get_status_voteses()
+    }
+
+    pub async fn get_runtime_content_to_validate(&self) -> Vec<(String, String, String, Duration)> {
+        self.validator_client.get_content_to_evaluate().await
     }
 
     pub async fn spawn_node(&self) -> tokio::task::JoinHandle<()> {

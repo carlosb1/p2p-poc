@@ -50,7 +50,7 @@ pub fn run_relay_server() -> JoinHandle<()> {
 #[tokio::test]
 async fn simple_node_communication() {
     init_logging();
-    //let join_handle = run_relay_server();
+    let join_handle = run_relay_server();
     println!("Relay server started, waiting for 5 seconds to stabilize...");
     tokio::time::sleep(Duration::from_secs(5)).await;
 

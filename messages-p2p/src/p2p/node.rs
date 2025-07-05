@@ -190,18 +190,18 @@ impl<H: MessageHandler> NetworkClientNode<H> {
                         ChatCommand::Subscribe(topic_name) => {
                             let topic = Topic::new(topic_name);
                             if self.swarm.behaviour_mut().gossip_sub.subscribe(&topic).is_ok() {
-                                log::info!("✅ Subscribed to topic: {topic}");
+                                log::debug!("✅ Subscribed to topic: {topic}");
                             }
                         }
                         ChatCommand::Publish(topic_name, msg) => {
                             let topic = Topic::new(topic_name);
-                            log::info!("🟢 Publishing: {} with topic {:?}", String::from_utf8_lossy(&msg), topic.clone());
+                            log::debug!("🟢 Publishing: {} with topic {:?}", String::from_utf8_lossy(&msg), topic.clone());
                             if self.swarm.behaviour_mut().gossip_sub.publish(topic.clone(), msg).is_ok() {
-                                log::info!("📤 Published to topic: {topic}");
+                                log::debug!("📤 Published to topic: {topic}");
                             }
                         },
                         ChatCommand::SendOne(peer_id, msg) => {
-                            log::info!("🟢 Sending one-to-one message: {} to peer: {peer_id}", String::from_utf8_lossy(&msg));
+                            log::debug!("🟢 Sending one-to-one message: {} to peer: {peer_id}", String::from_utf8_lossy(&msg));
                             self.swarm.behaviour_mut().request_response.send_request(
                                 &PeerId::from_str(&peer_id).map_err(anyhow::Error::msg)?,
                                 OneToOneRequest {
@@ -210,7 +210,7 @@ impl<H: MessageHandler> NetworkClientNode<H> {
                             );
                         },
                         ChatCommand::Quit => {
-                            log::info!("👋 Quitting the node: {peer_id_str}");
+                            log::debug!("👋 Quitting the node: {peer_id_str}");
                             return Ok(());
                         }
                     }

@@ -1,4 +1,4 @@
-use crate::models::db::{StateContent, Votation};
+use crate::models::db::{StateContent, Topic, Votation, VoteStatus};
 use crate::models::messages::Vote;
 use crate::{db, models};
 use chrono::Utc;
@@ -50,6 +50,7 @@ pub struct Jury {
     voters: Vec<String>,
 }
 
+/* voter operations */
 pub fn store_voter(
     db: &sled::Db,
     id_votation: &str,
@@ -91,7 +92,7 @@ pub fn get_voters(db: &sled::Db, id_votation: &str, topic: &str) -> anyhow::Resu
     Ok(vec![])
 }
 
-/* Operations for db management */
+/* reputations dbs */
 
 pub fn get_reputation(db: &sled::Db, topic: &str, peer_id: &str) -> Option<f32> {
     let key = format!("election/{topic}/reputation/{peer_id}");
@@ -169,6 +170,28 @@ pub fn update_reputations(
     Ok(())
 }
 
+/* Topics db */
+pub async fn get_topics(db: &Db) -> Vec<Topic> {
+    db.scan_prefix("topics/")
+        .filter_map(|item| {
+            if let Ok((_key, value)) = item {
+                serde_json::from_slice::<Topic>(&value).ok()
+            } else {
+                None
+            }
+        })
+        .collect()
+}
+
+pub async fn save_topic(db: &Db, topic: &Topic) -> anyhow::Result<()> {
+    let key = "topics/";
+    let value = serde_json::to_string(topic)?.into_bytes();
+    db.insert(key, value)?;
+    db.flush()?;
+    Ok(())
+}
+
+/*  Content db */
 pub fn include_new_validated_content(
     db: &Db,
     data_content: &models::db::DataContent,
@@ -181,36 +204,8 @@ pub fn include_new_validated_content(
     Ok(())
 }
 
-pub async fn get_topics(db: &Db) -> Vec<String> {
-    /*
-    db.scan_prefix(format!("topics/{peer_id}"))
-        .filter_map(|item| {
-            if let Ok((_key, value)) = item {
-                serde_json::from_slice::<Vec<String>>(&value).ok()
-            } else {
-                None
-            }
-        })
-        .collect()
-            */
-    vec![]
-}
-
-pub async fn save_topic(db: &Db, topic: &str) -> anyhow::Result<()> {
-    /*
-    let key = format!("topics/}");
-    let value = serde_json::to_vec(data_content).expect("Failed to serialize reputation");
-    db.insert(key, value)?;
-    db.flush()?;
-    */
-    Ok(())
-}
-
-
-
-
 pub fn get_contents(db: &Db) -> Vec<models::db::DataContent> {
-    db.scan_prefix(format!("content/"))
+    db.scan_prefix("content/")
         .filter_map(|item| {
             if let Ok((_key, value)) = item {
                 serde_json::from_slice::<models::db::DataContent>(&value).ok()
@@ -221,6 +216,7 @@ pub fn get_contents(db: &Db) -> Vec<models::db::DataContent> {
         .collect()
 }
 
+/* votes db operations */
 pub fn get_votes(db: &Db, id_votation: &str) -> Vec<(String, Vote)> {
     let key = format!("election/vote/{id_votation}");
     db.scan_prefix(key)
@@ -251,11 +247,17 @@ pub fn add_vote(db: &Db, id_votation: &str, peer_id: &str, vote: &Vote) -> anyho
     )?;
     Ok(())
 }
-
-pub fn new_status_vote(db: &sled::Db, key: &str, votation: &Votation) -> anyhow::Result<()> {
+//TODO restructure keys (naming and where we save the tables)
+/* Status vote db opers */
+pub fn new_status_vote(
+    db: &sled::Db,
+    id_votation: &str,
+    votation: &Votation,
+) -> anyhow::Result<()> {
+    let id_status_vote = format!("pending_content/{id_votation}");
     let vec_new = serde_json::to_string(&votation)?.into_bytes();
 
-    match db.compare_and_swap(key, None::<Vec<u8>>, Some(vec_new))? {
+    match db.compare_and_swap(id_status_vote, None::<Vec<u8>>, Some(vec_new))? {
         Ok(_) => Ok(()),
         Err(CompareAndSwapError {
             current,
@@ -268,20 +270,22 @@ pub fn new_status_vote(db: &sled::Db, key: &str, votation: &Votation) -> anyhow:
 }
 
 pub fn get_status_vote(db: &sled::Db, id_votation: &str) -> Option<Votation> {
-    db.get(id_votation)
+    let id_status_vote = format!("pending_content/{id_votation}");
+    db.get(id_status_vote)
         .ok()?
         .and_then(|value| { serde_json::from_slice::<Votation>(&value).ok() }.or(None))
 }
 
 pub fn compare_and_swap_status_vote(
     db: &sled::Db,
-    key: &str,
+    id_votation: &str,
     old: &Votation,
     new: &Votation,
 ) -> anyhow::Result<()> {
+    let id_status_vote = format!("pending_content/{id_votation}");
     let vec_old = serde_json::to_string(&old)?.into_bytes();
     let vec_new = serde_json::to_string(&new)?.into_bytes();
-    match db.compare_and_swap(key, Some(vec_old), Some(vec_new))? {
+    match db.compare_and_swap(id_status_vote, Some(vec_old), Some(vec_new))? {
         Ok(_) => Ok(()),
         Err(CompareAndSwapError {
             current,
@@ -291,6 +295,19 @@ pub fn compare_and_swap_status_vote(
             current
         )),
     }
+}
+
+pub fn get_status_voteses(db: &sled::Db) -> Vec<VoteStatus> {
+    let key = format!("pending_content/");
+    db.scan_prefix(key)
+        .filter_map(|item| {
+            if let Ok((_key, value)) = item {
+                serde_json::from_slice::<VoteStatus>(&value).ok()
+            } else {
+                None
+            }
+        })
+        .collect()
 }
 
 #[test]

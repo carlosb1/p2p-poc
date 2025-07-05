@@ -7,31 +7,74 @@ namespace bindings_p2p {
 void dummy_start(string server_address, string peer_id, string username);
 void dummy_set_listener(EventListener listener);
 void dummy_raw_message(string topic, string message);
-    [Async, Throws=APIError]
+    [Throws=APIError]
     void start(string server_address, string peer_id, string username);
-    [Async,Throws=APIError]
+    [Throws=APIError]
     void add_vote(string topic, string message, Vote vote);
-    [Async,Throws=APIError]
-    void validate_content(string id_votation, string topic, string content);
-    [Async, Throws=APIError]
-    void remote_new_topic(string topic);
-    [Async, Throws=APIError]
-    void register_topic(string topic);
-    [Async, Throws=APIError]
-    sequence<DataContent> all_content();
-    [Async, Throws=APIError]
-    Votation? get_status_vote(string key);
-    [Async, Throws=APIError]
-    sequence<string> voters(string key, string topic);
+    [Throws=APIError]
+    string validate_content(string topic, string content);
+    [Throws=APIError]
+    void remote_new_topic(string name, string description);
+    [Throws=APIError]
+    void register_topic(string name, string description);
+sequence<Topic> get_my_topics();
+    [Throws=APIError]
+    string new_key_available(string topic, string content);
 
-    [Async, Throws=APIError]
+    [Throws=APIError]
+    sequence<DataContent> all_content();
+    [Throws=APIError]
+    Votation? get_status_vote(string key);
+    [Throws=APIError]
+    sequence<string> voters(string key, string topic);
+    [Throws=APIError]
     float get_reputation(string peer_id, string topic);
 
-    [Async]
-    sequence<Reputation> get_reputations(string topic);
+sequence<Reputation> get_reputations(string topic);
 
+sequence<VoteStatus> get_status_voteses();
 
+sequence<RuntimePendingContent> get_runtime_content_to_validate();
+ConnectionData download_connection_data();
+ConnectionData? connection_data();
 };
+
+dictionary ConnectionData {
+    string server_id;
+    sequence<string> server_address;
+    string? client_id;
+};
+
+dictionary RuntimePendingContent {
+    string key;
+    string topic;
+    string content;
+    timestamp wait_timeout;
+};
+
+dictionary Topic {
+    string name;
+    string description;
+};
+
+enum VoteStatusKind {
+    "Pending",
+    "Accepted",
+    "Rejected",
+};
+
+
+dictionary Pair {
+    string key;
+    float value;
+};
+
+dictionary VoteStatus {
+    VoteStatusKind kind;
+    sequence<Pair>? pending_data;
+};
+
+
 dictionary Reputation {
     string name;
     float repu;
@@ -41,11 +84,7 @@ dictionary Event {
     string topic;
     string message;
 };
-dictionary ConnectionData {
-    string server_peer_id;
-    string server_address;
-    string client_peer_id;
-};
+
 dictionary Vote {
     boolean good;
 };
