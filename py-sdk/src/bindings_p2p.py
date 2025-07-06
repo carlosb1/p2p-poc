@@ -464,8 +464,6 @@ def _uniffi_check_api_checksums(lib):
         raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     if lib.uniffi_uniffi_bindings_p2p_checksum_func_all_content() != 35134:
         raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
-    if lib.uniffi_uniffi_bindings_p2p_checksum_func_connection_data() != 54043:
-        raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     if lib.uniffi_uniffi_bindings_p2p_checksum_func_download_connection_data() != 22897:
         raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     if lib.uniffi_uniffi_bindings_p2p_checksum_func_dummy_raw_message() != 43565:
@@ -492,7 +490,7 @@ def _uniffi_check_api_checksums(lib):
         raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     if lib.uniffi_uniffi_bindings_p2p_checksum_func_remote_new_topic() != 22201:
         raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
-    if lib.uniffi_uniffi_bindings_p2p_checksum_func_start() != 33658:
+    if lib.uniffi_uniffi_bindings_p2p_checksum_func_start() != 10775:
         raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     if lib.uniffi_uniffi_bindings_p2p_checksum_func_validate_content() != 57356:
         raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
@@ -645,10 +643,6 @@ _UniffiLib.uniffi_uniffi_bindings_p2p_fn_func_all_content.argtypes = (
     ctypes.POINTER(_UniffiRustCallStatus),
 )
 _UniffiLib.uniffi_uniffi_bindings_p2p_fn_func_all_content.restype = _UniffiRustBuffer
-_UniffiLib.uniffi_uniffi_bindings_p2p_fn_func_connection_data.argtypes = (
-    ctypes.POINTER(_UniffiRustCallStatus),
-)
-_UniffiLib.uniffi_uniffi_bindings_p2p_fn_func_connection_data.restype = _UniffiRustBuffer
 _UniffiLib.uniffi_uniffi_bindings_p2p_fn_func_download_connection_data.argtypes = (
     ctypes.POINTER(_UniffiRustCallStatus),
 )
@@ -723,7 +717,7 @@ _UniffiLib.uniffi_uniffi_bindings_p2p_fn_func_start.argtypes = (
     _UniffiRustBuffer,
     ctypes.POINTER(_UniffiRustCallStatus),
 )
-_UniffiLib.uniffi_uniffi_bindings_p2p_fn_func_start.restype = None
+_UniffiLib.uniffi_uniffi_bindings_p2p_fn_func_start.restype = _UniffiRustBuffer
 _UniffiLib.uniffi_uniffi_bindings_p2p_fn_func_validate_content.argtypes = (
     _UniffiRustBuffer,
     _UniffiRustBuffer,
@@ -1010,9 +1004,6 @@ _UniffiLib.uniffi_uniffi_bindings_p2p_checksum_func_add_vote.restype = ctypes.c_
 _UniffiLib.uniffi_uniffi_bindings_p2p_checksum_func_all_content.argtypes = (
 )
 _UniffiLib.uniffi_uniffi_bindings_p2p_checksum_func_all_content.restype = ctypes.c_uint16
-_UniffiLib.uniffi_uniffi_bindings_p2p_checksum_func_connection_data.argtypes = (
-)
-_UniffiLib.uniffi_uniffi_bindings_p2p_checksum_func_connection_data.restype = ctypes.c_uint16
 _UniffiLib.uniffi_uniffi_bindings_p2p_checksum_func_download_connection_data.argtypes = (
 )
 _UniffiLib.uniffi_uniffi_bindings_p2p_checksum_func_download_connection_data.restype = ctypes.c_uint16
@@ -1840,33 +1831,6 @@ class _UniffiConverterOptionalString(_UniffiConverterRustBuffer):
 
 
 
-class _UniffiConverterOptionalTypeConnectionData(_UniffiConverterRustBuffer):
-    @classmethod
-    def check_lower(cls, value):
-        if value is not None:
-            _UniffiConverterTypeConnectionData.check_lower(value)
-
-    @classmethod
-    def write(cls, value, buf):
-        if value is None:
-            buf.write_u8(0)
-            return
-
-        buf.write_u8(1)
-        _UniffiConverterTypeConnectionData.write(value, buf)
-
-    @classmethod
-    def read(cls, buf):
-        flag = buf.read_u8()
-        if flag == 0:
-            return None
-        elif flag == 1:
-            return _UniffiConverterTypeConnectionData.read(buf)
-        else:
-            raise InternalError("Unexpected flag byte for optional type")
-
-
-
 class _UniffiConverterOptionalTypeVotation(_UniffiConverterRustBuffer):
     @classmethod
     def check_lower(cls, value):
@@ -2255,10 +2219,6 @@ def all_content() -> "typing.List[DataContent]":
     return _UniffiConverterSequenceTypeDataContent.lift(_uniffi_rust_call_with_error(_UniffiConverterTypeApiError,_UniffiLib.uniffi_uniffi_bindings_p2p_fn_func_all_content,))
 
 
-def connection_data() -> "typing.Optional[ConnectionData]":
-    return _UniffiConverterOptionalTypeConnectionData.lift(_uniffi_rust_call(_UniffiLib.uniffi_uniffi_bindings_p2p_fn_func_connection_data,))
-
-
 def download_connection_data() -> "ConnectionData":
     return _UniffiConverterTypeConnectionData.lift(_uniffi_rust_call(_UniffiLib.uniffi_uniffi_bindings_p2p_fn_func_download_connection_data,))
 
@@ -2359,17 +2319,17 @@ def remote_new_topic(name: "str",description: "str") -> None:
         _UniffiConverterString.lower(description))
 
 
-def start(server_address: "str",peer_id: "str",username: "str") -> None:
+def start(server_address: "str",peer_id: "str",username: "str") -> "ConnectionData":
     _UniffiConverterString.check_lower(server_address)
     
     _UniffiConverterString.check_lower(peer_id)
     
     _UniffiConverterString.check_lower(username)
     
-    _uniffi_rust_call_with_error(_UniffiConverterTypeApiError,_UniffiLib.uniffi_uniffi_bindings_p2p_fn_func_start,
+    return _UniffiConverterTypeConnectionData.lift(_uniffi_rust_call_with_error(_UniffiConverterTypeApiError,_UniffiLib.uniffi_uniffi_bindings_p2p_fn_func_start,
         _UniffiConverterString.lower(server_address),
         _UniffiConverterString.lower(peer_id),
-        _UniffiConverterString.lower(username))
+        _UniffiConverterString.lower(username)))
 
 
 def validate_content(topic: "str",content: "str") -> "str":
@@ -2410,7 +2370,6 @@ __all__ = [
     "VoteStatus",
     "add_vote",
     "all_content",
-    "connection_data",
     "download_connection_data",
     "dummy_raw_message",
     "dummy_set_listener",

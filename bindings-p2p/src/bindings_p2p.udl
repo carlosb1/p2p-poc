@@ -8,7 +8,7 @@ void dummy_start(string server_address, string peer_id, string username);
 void dummy_set_listener(EventListener listener);
 void dummy_raw_message(string topic, string message);
     [Throws=APIError]
-    void start(string server_address, string peer_id, string username);
+    ConnectionData start(string server_address, string peer_id, string username);
     [Throws=APIError]
     void add_vote(string topic, string message, Vote vote);
     [Throws=APIError]
@@ -36,7 +36,6 @@ sequence<VoteStatus> get_status_voteses();
 
 sequence<RuntimePendingContent> get_runtime_content_to_validate();
 ConnectionData download_connection_data();
-ConnectionData? connection_data();
 };
 
 dictionary ConnectionData {

@@ -772,8 +772,6 @@ internal open class UniffiVTableCallbackInterfaceEventListener(
 
 
 
-
-
 // For large crates we prevent `MethodTooLargeException` (see #2340)
 // N.B. the name of the extension is very misleading, since it is 
 // rather `InterfaceTooLargeException`, caused by too many methods 
@@ -792,8 +790,6 @@ internal interface IntegrityCheckingUniffiLib : Library {
     fun uniffi_uniffi_bindings_p2p_checksum_func_add_vote(
 ): Short
 fun uniffi_uniffi_bindings_p2p_checksum_func_all_content(
-): Short
-fun uniffi_uniffi_bindings_p2p_checksum_func_connection_data(
 ): Short
 fun uniffi_uniffi_bindings_p2p_checksum_func_download_connection_data(
 ): Short
@@ -891,8 +887,6 @@ fun uniffi_uniffi_bindings_p2p_fn_func_add_vote(`topic`: RustBuffer.ByValue,`mes
 ): Unit
 fun uniffi_uniffi_bindings_p2p_fn_func_all_content(uniffi_out_err: UniffiRustCallStatus, 
 ): RustBuffer.ByValue
-fun uniffi_uniffi_bindings_p2p_fn_func_connection_data(uniffi_out_err: UniffiRustCallStatus, 
-): RustBuffer.ByValue
 fun uniffi_uniffi_bindings_p2p_fn_func_download_connection_data(uniffi_out_err: UniffiRustCallStatus, 
 ): RustBuffer.ByValue
 fun uniffi_uniffi_bindings_p2p_fn_func_dummy_raw_message(`topic`: RustBuffer.ByValue,`message`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
@@ -920,7 +914,7 @@ fun uniffi_uniffi_bindings_p2p_fn_func_register_topic(`name`: RustBuffer.ByValue
 fun uniffi_uniffi_bindings_p2p_fn_func_remote_new_topic(`name`: RustBuffer.ByValue,`description`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
 ): Unit
 fun uniffi_uniffi_bindings_p2p_fn_func_start(`serverAddress`: RustBuffer.ByValue,`peerId`: RustBuffer.ByValue,`username`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
-): Unit
+): RustBuffer.ByValue
 fun uniffi_uniffi_bindings_p2p_fn_func_validate_content(`topic`: RustBuffer.ByValue,`content`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
 ): RustBuffer.ByValue
 fun uniffi_uniffi_bindings_p2p_fn_func_voters(`key`: RustBuffer.ByValue,`topic`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
@@ -1057,9 +1051,6 @@ private fun uniffiCheckApiChecksums(lib: IntegrityCheckingUniffiLib) {
     if (lib.uniffi_uniffi_bindings_p2p_checksum_func_all_content() != 35134.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
-    if (lib.uniffi_uniffi_bindings_p2p_checksum_func_connection_data() != 54043.toShort()) {
-        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
-    }
     if (lib.uniffi_uniffi_bindings_p2p_checksum_func_download_connection_data() != 22897.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
@@ -1099,7 +1090,7 @@ private fun uniffiCheckApiChecksums(lib: IntegrityCheckingUniffiLib) {
     if (lib.uniffi_uniffi_bindings_p2p_checksum_func_remote_new_topic() != 22201.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
-    if (lib.uniffi_uniffi_bindings_p2p_checksum_func_start() != 33658.toShort()) {
+    if (lib.uniffi_uniffi_bindings_p2p_checksum_func_start() != 10775.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_uniffi_bindings_p2p_checksum_func_validate_content() != 57356.toShort()) {
@@ -2241,38 +2232,6 @@ public object FfiConverterOptionalString: FfiConverterRustBuffer<kotlin.String?>
 /**
  * @suppress
  */
-public object FfiConverterOptionalTypeConnectionData: FfiConverterRustBuffer<ConnectionData?> {
-    override fun read(buf: ByteBuffer): ConnectionData? {
-        if (buf.get().toInt() == 0) {
-            return null
-        }
-        return FfiConverterTypeConnectionData.read(buf)
-    }
-
-    override fun allocationSize(value: ConnectionData?): ULong {
-        if (value == null) {
-            return 1UL
-        } else {
-            return 1UL + FfiConverterTypeConnectionData.allocationSize(value)
-        }
-    }
-
-    override fun write(value: ConnectionData?, buf: ByteBuffer) {
-        if (value == null) {
-            buf.put(0)
-        } else {
-            buf.put(1)
-            FfiConverterTypeConnectionData.write(value, buf)
-        }
-    }
-}
-
-
-
-
-/**
- * @suppress
- */
 public object FfiConverterOptionalTypeVotation: FfiConverterRustBuffer<Votation?> {
     override fun read(buf: ByteBuffer): Votation? {
         if (buf.get().toInt() == 0) {
@@ -2572,15 +2531,6 @@ public object FfiConverterSequenceTypeVoteStatus: FfiConverterRustBuffer<List<Vo
     )
     }
     
- fun `connectionData`(): ConnectionData? {
-            return FfiConverterOptionalTypeConnectionData.lift(
-    uniffiRustCall() { _status ->
-    UniffiLib.INSTANCE.uniffi_uniffi_bindings_p2p_fn_func_connection_data(
-        _status)
-}
-    )
-    }
-    
  fun `downloadConnectionData`(): ConnectionData {
             return FfiConverterTypeConnectionData.lift(
     uniffiRustCall() { _status ->
@@ -2699,13 +2649,14 @@ public object FfiConverterSequenceTypeVoteStatus: FfiConverterRustBuffer<List<Vo
     
     
 
-    @Throws(ApiException::class) fun `start`(`serverAddress`: kotlin.String, `peerId`: kotlin.String, `username`: kotlin.String)
-        = 
+    @Throws(ApiException::class) fun `start`(`serverAddress`: kotlin.String, `peerId`: kotlin.String, `username`: kotlin.String): ConnectionData {
+            return FfiConverterTypeConnectionData.lift(
     uniffiRustCallWithError(ApiException) { _status ->
     UniffiLib.INSTANCE.uniffi_uniffi_bindings_p2p_fn_func_start(
         FfiConverterString.lower(`serverAddress`),FfiConverterString.lower(`peerId`),FfiConverterString.lower(`username`),_status)
 }
-    
+    )
+    }
     
 
     @Throws(ApiException::class) fun `validateContent`(`topic`: kotlin.String, `content`: kotlin.String): kotlin.String {

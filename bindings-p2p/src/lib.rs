@@ -55,8 +55,6 @@ static DUMMY_NODE_TX: OnceLock<mpsc::Sender<ChatCommand>> = OnceLock::new();
 
 static CLIENT: OnceLock<Mutex<APIClient>> = OnceLock::new();
 
-static STATEDATA: OnceLock<Mutex<ConnectionData>> = OnceLock::new();
-
 // Creamos un runtime global
 pub static TOKIO_RT: Lazy<Runtime> =
     Lazy::new(|| Runtime::new().expect("failed to create Tokio runtime"));
@@ -103,10 +101,10 @@ impl From<messages_p2p::Topic> for Topic {
 }
 
 #[derive(Debug, Clone)]
-struct ConnectionData {
-    server_id: String,
-    server_address: Vec<String>,
-    client_id: Option<String>,
+pub struct ConnectionData {
+    pub server_id: String,
+    pub server_address: Vec<String>,
+    pub client_id: Option<String>,
 }
 
 pub struct Vote {
@@ -228,18 +226,6 @@ impl From<messages_p2p::DataContent> for DataContent {
     }
 }
 
-pub fn connection_data() -> Option<ConnectionData> {
-    block_on(async {
-        let Some(mutex_state_data) = STATEDATA.get() else {
-            log::debug!("State data is not initialized");
-            return None;
-        };
-        let lock = mutex_state_data; // Get &Mutex<ConnectionData>
-        let data = lock.lock().await; // Acquire lock
-        Some(data.clone()) // Clone the inner data
-    })
-}
-
 pub fn download_connection_data() -> ConnectionData {
     block_on(async {
         #[derive(Debug, Deserialize)]
@@ -261,7 +247,7 @@ pub fn start(
     server_address: String,
     server_peer_id: String,
     username: String,
-) -> Result<(), APIError> {
+) -> Result<ConnectionData, APIError> {
     block_on(async move {
         init_logging();
         let keypair = Keypair::generate_ed25519();
@@ -277,16 +263,6 @@ pub fn start(
             addr: server_address.clone(),
             msg: e.to_string(),
         })?;
-
-        STATEDATA
-            .set(Mutex::new(ConnectionData {
-                server_id: server_peer_id.clone(),
-                server_address: vec![server_address.clone()],
-                client_id: Some(peer_id.to_string()),
-            }))
-            .map_err(|_| ConcurrencyError {
-                msg: "STATE DATA not set".to_string(),
-            })?;
 
         CLIENT.set(Mutex::new(node)).map_err(|_| ConcurrencyError {
             msg: "CLIENT not set".to_string(),
@@ -309,7 +285,11 @@ pub fn start(
             });
         });
 
-        Ok(())
+        Ok(ConnectionData {
+            server_id: server_peer_id.clone(),
+            server_address: vec![server_address.clone()],
+            client_id: Some(peer_id.to_string()),
+        })
     })
 }
 

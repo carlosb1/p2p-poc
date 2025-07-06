@@ -464,6 +464,7 @@ dependencies = [
  "rand 0.9.1",
  "reqwest",
  "serde",
+ "sha2",
  "thiserror 2.0.12",
  "tokio",
  "uniffi",
