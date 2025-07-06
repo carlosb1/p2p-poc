@@ -1078,7 +1078,7 @@ private fun uniffiCheckApiChecksums(lib: IntegrityCheckingUniffiLib) {
     if (lib.uniffi_uniffi_bindings_p2p_checksum_func_get_status_vote() != 56723.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
-    if (lib.uniffi_uniffi_bindings_p2p_checksum_func_get_status_voteses() != 57360.toShort()) {
+    if (lib.uniffi_uniffi_bindings_p2p_checksum_func_get_status_voteses() != 39847.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_uniffi_bindings_p2p_checksum_func_new_key_available() != 57342.toShort()) {
@@ -2464,6 +2464,34 @@ public object FfiConverterSequenceTypeTopic: FfiConverterRustBuffer<List<Topic>>
 /**
  * @suppress
  */
+public object FfiConverterSequenceTypeVotation: FfiConverterRustBuffer<List<Votation>> {
+    override fun read(buf: ByteBuffer): List<Votation> {
+        val len = buf.getInt()
+        return List<Votation>(len) {
+            FfiConverterTypeVotation.read(buf)
+        }
+    }
+
+    override fun allocationSize(value: List<Votation>): ULong {
+        val sizeForLength = 4UL
+        val sizeForItems = value.map { FfiConverterTypeVotation.allocationSize(it) }.sum()
+        return sizeForLength + sizeForItems
+    }
+
+    override fun write(value: List<Votation>, buf: ByteBuffer) {
+        buf.putInt(value.size)
+        value.iterator().forEach {
+            FfiConverterTypeVotation.write(it, buf)
+        }
+    }
+}
+
+
+
+
+/**
+ * @suppress
+ */
 public object FfiConverterSequenceTypeVoteId: FfiConverterRustBuffer<List<VoteId>> {
     override fun read(buf: ByteBuffer): List<VoteId> {
         val len = buf.getInt()
@@ -2482,34 +2510,6 @@ public object FfiConverterSequenceTypeVoteId: FfiConverterRustBuffer<List<VoteId
         buf.putInt(value.size)
         value.iterator().forEach {
             FfiConverterTypeVoteId.write(it, buf)
-        }
-    }
-}
-
-
-
-
-/**
- * @suppress
- */
-public object FfiConverterSequenceTypeVoteStatus: FfiConverterRustBuffer<List<VoteStatus>> {
-    override fun read(buf: ByteBuffer): List<VoteStatus> {
-        val len = buf.getInt()
-        return List<VoteStatus>(len) {
-            FfiConverterTypeVoteStatus.read(buf)
-        }
-    }
-
-    override fun allocationSize(value: List<VoteStatus>): ULong {
-        val sizeForLength = 4UL
-        val sizeForItems = value.map { FfiConverterTypeVoteStatus.allocationSize(it) }.sum()
-        return sizeForLength + sizeForItems
-    }
-
-    override fun write(value: List<VoteStatus>, buf: ByteBuffer) {
-        buf.putInt(value.size)
-        value.iterator().forEach {
-            FfiConverterTypeVoteStatus.write(it, buf)
         }
     }
 }
@@ -2611,8 +2611,8 @@ public object FfiConverterSequenceTypeVoteStatus: FfiConverterRustBuffer<List<Vo
     )
     }
     
- fun `getStatusVoteses`(): List<VoteStatus> {
-            return FfiConverterSequenceTypeVoteStatus.lift(
+ fun `getStatusVoteses`(): List<Votation> {
+            return FfiConverterSequenceTypeVotation.lift(
     uniffiRustCall() { _status ->
     UniffiLib.INSTANCE.uniffi_uniffi_bindings_p2p_fn_func_get_status_voteses(
         _status)

@@ -171,7 +171,7 @@ impl ValidatorClient {
         db::get_status_vote(&self.db, key)
     }
 
-    pub fn get_status_voteses(&self) -> Vec<VoteStatus> {
+    pub fn get_status_voteses(&self) -> Vec<Votation> {
         db::get_status_voteses(&self.db)
     }
 

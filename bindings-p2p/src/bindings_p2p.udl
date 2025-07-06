@@ -32,7 +32,7 @@ sequence<Topic> get_my_topics();
 
 sequence<Reputation> get_reputations(string topic);
 
-sequence<VoteStatus> get_status_voteses();
+sequence<Votation> get_status_voteses();
 
 sequence<RuntimePendingContent> get_runtime_content_to_validate();
 ConnectionData download_connection_data();

@@ -184,7 +184,7 @@ impl APIClient {
     pub fn get_status_vote(&self, key: &str) -> Option<Votation> {
         self.validator_client.get_status_vote(key)
     }
-    pub fn get_status_voteses(&self) -> Vec<VoteStatus> {
+    pub fn get_status_voteses(&self) -> Vec<Votation> {
         self.validator_client.get_status_voteses()
     }
 

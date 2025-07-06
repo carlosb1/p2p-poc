@@ -163,18 +163,18 @@ class P2PCLI(cmd.Cmd):
 
     def do_reputations(self, arg):
         """Get reputation: reputations  <topic>"""
-        parts = arg.strip().split()
-        if len(parts) != 2:
+        topic = arg.strip()
+        if not topic:
             print("Usage: reputation <peer_id> <topic>")
             return
-        peer_id, topic = parts
         try:
-            rep = bindings_p2p.get_reputation(peer_id, topic)
-            print(f"⭐ Reputation: {rep}")
+            reps = bindings_p2p.get_reputations(topic)
+            for rep in reps:
+                print(f"⭐ Reputation: {rep}")
         except Exception as e:
             print(f"❌ Error: {e}")
 
-    def do_get_status_voteses(self,arg):
+    def do_get_status_voteses(self, _):
         """Get status voteses: status_voteses"""
         try:
             voteses = bindings_p2p.get_status_voteses()

@@ -482,7 +482,7 @@ def _uniffi_check_api_checksums(lib):
         raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     if lib.uniffi_uniffi_bindings_p2p_checksum_func_get_status_vote() != 56723:
         raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
-    if lib.uniffi_uniffi_bindings_p2p_checksum_func_get_status_voteses() != 57360:
+    if lib.uniffi_uniffi_bindings_p2p_checksum_func_get_status_voteses() != 39847:
         raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     if lib.uniffi_uniffi_bindings_p2p_checksum_func_new_key_available() != 57342:
         raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
@@ -2035,6 +2035,31 @@ class _UniffiConverterSequenceTypeTopic(_UniffiConverterRustBuffer):
 
 
 
+class _UniffiConverterSequenceTypeVotation(_UniffiConverterRustBuffer):
+    @classmethod
+    def check_lower(cls, value):
+        for item in value:
+            _UniffiConverterTypeVotation.check_lower(item)
+
+    @classmethod
+    def write(cls, value, buf):
+        items = len(value)
+        buf.write_i32(items)
+        for item in value:
+            _UniffiConverterTypeVotation.write(item, buf)
+
+    @classmethod
+    def read(cls, buf):
+        count = buf.read_i32()
+        if count < 0:
+            raise InternalError("Unexpected negative sequence length")
+
+        return [
+            _UniffiConverterTypeVotation.read(buf) for i in range(count)
+        ]
+
+
+
 class _UniffiConverterSequenceTypeVoteId(_UniffiConverterRustBuffer):
     @classmethod
     def check_lower(cls, value):
@@ -2056,31 +2081,6 @@ class _UniffiConverterSequenceTypeVoteId(_UniffiConverterRustBuffer):
 
         return [
             _UniffiConverterTypeVoteId.read(buf) for i in range(count)
-        ]
-
-
-
-class _UniffiConverterSequenceTypeVoteStatus(_UniffiConverterRustBuffer):
-    @classmethod
-    def check_lower(cls, value):
-        for item in value:
-            _UniffiConverterTypeVoteStatus.check_lower(item)
-
-    @classmethod
-    def write(cls, value, buf):
-        items = len(value)
-        buf.write_i32(items)
-        for item in value:
-            _UniffiConverterTypeVoteStatus.write(item, buf)
-
-    @classmethod
-    def read(cls, buf):
-        count = buf.read_i32()
-        if count < 0:
-            raise InternalError("Unexpected negative sequence length")
-
-        return [
-            _UniffiConverterTypeVoteStatus.read(buf) for i in range(count)
         ]
 
 # objects.
@@ -2285,8 +2285,8 @@ def get_status_vote(key: "str") -> "typing.Optional[Votation]":
         _UniffiConverterString.lower(key)))
 
 
-def get_status_voteses() -> "typing.List[VoteStatus]":
-    return _UniffiConverterSequenceTypeVoteStatus.lift(_uniffi_rust_call(_UniffiLib.uniffi_uniffi_bindings_p2p_fn_func_get_status_voteses,))
+def get_status_voteses() -> "typing.List[Votation]":
+    return _UniffiConverterSequenceTypeVotation.lift(_uniffi_rust_call(_UniffiLib.uniffi_uniffi_bindings_p2p_fn_func_get_status_voteses,))
 
 
 def new_key_available(topic: "str",content: "str") -> "str":

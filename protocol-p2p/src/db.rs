@@ -297,12 +297,12 @@ pub fn compare_and_swap_status_vote(
     }
 }
 
-pub fn get_status_voteses(db: &sled::Db) -> Vec<VoteStatus> {
+pub fn get_status_voteses(db: &sled::Db) -> Vec<Votation> {
     let key = format!("pending_content/");
     db.scan_prefix(key)
         .filter_map(|item| {
             if let Ok((_key, value)) = item {
-                serde_json::from_slice::<VoteStatus>(&value).ok()
+                serde_json::from_slice::<Votation>(&value).ok()
             } else {
                 None
             }
@@ -419,4 +419,6 @@ fn test_insert_and_get_status_vote_and_update() {
 
     assert_eq!(result.id_votation, vote.id_votation);
     assert_eq!(result.status, "approved");
+    let votes = get_status_voteses(&db);
+    println!("votes {:?}", votes);
 }

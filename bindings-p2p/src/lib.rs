@@ -79,7 +79,7 @@ pub enum APIError {
     #[error("RuntimeError msg={msg}")]
     RuntimeError { msg: String },
 }
-struct RuntimePendingContent {
+pub struct RuntimePendingContent {
     key: String,
     topic: String,
     content: String,
@@ -130,6 +130,26 @@ pub struct Votation {
 
 impl From<messages_p2p::Votation> for Votation {
     fn from(v: messages_p2p::Votation) -> Self {
+        Self {
+            id_votation: v.id_votation,
+            timestam: UNIX_EPOCH
+                + std::time::Duration::from_millis(v.timestamp.timestamp_millis() as u64),
+            content: v.content,
+            status: v.status,
+            leader_id: v.leader_id,
+            my_role: v.my_role,
+            votes_id: v
+                .votes_id
+                .into_iter()
+                .filter_map(|(k, opt)| opt.map(|v| VoteId { key: k, value: v }))
+                .collect(),
+        }
+    }
+}
+
+impl From<&messages_p2p::Votation> for Votation {
+    fn from(temp_v: &messages_p2p::Votation) -> Self {
+        let v = temp_v.clone();
         Self {
             id_votation: v.id_votation,
             timestam: UNIX_EPOCH
@@ -502,7 +522,7 @@ pub fn get_status_vote(key: String) -> Result<Option<Votation>, APIError> {
     })
 }
 
-pub fn get_status_voteses() -> Vec<VoteStatus> {
+pub fn get_status_voteses() -> Vec<Votation> {
     block_on(async {
         let Some(mutex_client) = CLIENT.get() else {
             log::debug!("Client is not initialized yet");
@@ -513,7 +533,7 @@ pub fn get_status_voteses() -> Vec<VoteStatus> {
         locked
             .get_status_voteses()
             .iter()
-            .map(VoteStatus::from)
+            .map(Votation::from)
             .collect()
     })
 }

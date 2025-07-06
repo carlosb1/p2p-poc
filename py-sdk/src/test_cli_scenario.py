@@ -7,57 +7,59 @@ import bindings_p2p
 
 # Configura logging a DEBUG
 import os
-os.environ["RUST_LOG"] = "debug"
+os.environ["RUST_LOG"] = "info"
 
 logging.basicConfig(level=logging.DEBUG)
 
 # Variables compartidas
 VALIDATION_LOOP_ACTIVE = True
 content_to_test = "contenttotest"
-topic = "examplechat"
+topic = "topic1"
 description = "tag"
-
-received_key = None
 
 
 def client_behavior(name, validate=False):
     cli = P2PCLI()
     cli.preloop()
 
-    print(f"[{name}] Downloading connection data...")
+    print(f"[{name}] ⬇️ Downloading connection data...")
     cli.do_download("")
 
-    print(f"[{name}] Starting client...")
+    print(f"[{name}] 🚀 Starting client...")
     cli.do_start("")
+    time.sleep(5)
 
-    print(f"[{name}] Registering topic...")
+    print(f"[{name}] 📝 Registering topic...")
     cli.do_register_topic(f"{topic} {description}")
+    time.sleep(5)
 
     if validate:
-        print(f"[{name}] Validating content...")
-        key = bindings_p2p.validate_content(topic, content_to_test)
-        print(f"[{name}] Received key: {key}")
-        global received_key
-        received_key = key
+        print(f"[{name}] 🧪 Validating content...")
+        received_key = bindings_p2p.validate_content(topic, content_to_test)
+        print(f"[{name}] ✅ Received key: {received_key}")
 
 
-def voter_behavior():
-    cli = P2PCLI()
-    cli.preloop()
-    time.sleep(3)  # Wait until content is validated
+        print("[client1] 🕒 Waiting 20s for gossip mesh + processing...")
+        time.sleep(20)
 
-    if received_key:
-        print(f"[voter] Getting voters...")
+        print("Voters")
         cli.do_voters(f"{received_key} {topic}")
-    else:
-        print("❌ No key to use for voting.")
+        print("Pendings")
+        cli.do_runtime_pending("")
+        print("Available status")
+        cli.do_get_status_voteses("")
+        print("Reputations")
+        cli.do_reputations(topic)
 
+    print(f"[{name}] 💤 Keeping process alive to maintain mesh...")
+    time.sleep(30)  # Mantén el proceso activo
+
+
+from multiprocessing import Process
 
 def test_full_flow():
-    # Cliente 1: registra y valida
-    client1 = threading.Thread(target=client_behavior, args=("client1", True))
-    # Cliente 2: solo registra
-    client2 = threading.Thread(target=client_behavior, args=("client2", False))
+    client1 = Process(target=client_behavior, args=("client1", True))
+    client2 = Process(target=client_behavior, args=("client2", False))
 
     client1.start()
     time.sleep(1)
@@ -66,16 +68,7 @@ def test_full_flow():
     client1.join()
     client2.join()
 
-    # Lanzamos el que usa voters con la clave
-    voter = threading.Thread(target=voter_behavior)
-    voter.start()
-    voter.join()
-
-    # Terminamos el validador background
-    global VALIDATION_LOOP_ACTIVE
-    VALIDATION_LOOP_ACTIVE = False
     print("✅ Test complete.")
-
 
 if __name__ == "__main__":
     test_full_flow()
