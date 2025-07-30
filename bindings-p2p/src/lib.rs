@@ -48,7 +48,7 @@ pub trait EventListener: Send + Sync {
     fn on_event(&self, event: Event) -> String;
 }
 
-const MAGIC_SERVER_LINK_ADDRESS: &str = "http://3.248.210.253:3000/tracker";
+const MAGIC_SERVER_LINK_ADDRESS: &str = "http://34.243.226.243:3000/tracker";
 
 static LISTENER: OnceLock<Arc<dyn EventListener>> = OnceLock::new();
 static DUMMY_NODE_TX: OnceLock<mpsc::Sender<ChatCommand>> = OnceLock::new();

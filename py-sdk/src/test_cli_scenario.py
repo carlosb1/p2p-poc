@@ -39,7 +39,7 @@ def client_behavior(name, validate=False):
         print(f"[{name}] ✅ Received key: {received_key}")
 
 
-        print("[client1] 🕒 Waiting 20s for gossip mesh + processing...")
+        print(f"[{name}] 🕒 Waiting 20s for gossip mesh + processing...")
         time.sleep(20)
 
         print("Voters")
@@ -57,16 +57,26 @@ def client_behavior(name, validate=False):
 
 from multiprocessing import Process
 
+
+
 def test_full_flow():
     client1 = Process(target=client_behavior, args=("client1", True))
-    client2 = Process(target=client_behavior, args=("client2", False))
+    clients = []
+    for number_client in range(7):
+        client = Process(target=client_behavior, args=(f"client{number_client}", False))
+        clients.append(client)
 
     client1.start()
-    time.sleep(1)
-    client2.start()
+    time.sleep(5)
+    for client in clients:
+        client.start()
+
+    time.sleep(5)
 
     client1.join()
-    client2.join()
+
+    for client in clients:
+        client.join()
 
     print("✅ Test complete.")
 
