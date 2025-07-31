@@ -280,10 +280,10 @@ async fn validation_among_clients_with_local_server() {
 async fn validation_among_clients_with_remote_server() {
     init_logging();
     let server_address =
-        "/ip4/3.248.210.253/tcp/15000/p2p/12D3KooWQrGqCeHU7FeJQCPg4EmUHawBqJBVcUccHg8MFdhMHRj1"
+        "/ip4/34.243.226.243/tcp/15000/p2p/12D3KooWAc9GpyrxZnJwFhAEPzfghaHPyT2K2LYfhxV4ANuLNN1a"
             .to_string();
     let peer_id_server =
-        PeerId::from_str("12D3KooWQrGqCeHU7FeJQCPg4EmUHawBqJBVcUccHg8MFdhMHRj1").unwrap();
+        PeerId::from_str("12D3KooWAc9GpyrxZnJwFhAEPzfghaHPyT2K2LYfhxV4ANuLNN1a").unwrap();
 
     let mut clients = vec![];
     /* client params */

@@ -637,3 +637,68 @@ pub fn dummy_raw_message(topic: String, message: String) {
 }
 
 uniffi::include_scaffolding!("bindings_p2p");
+
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::time::Duration;
+    use std::thread::sleep;
+    use crate::{
+        download_connection_data,
+        start,
+        remote_new_topic,
+        register_topic,
+        validate_content,
+        voters,
+        get_reputations,
+        all_content,
+    };
+
+    #[test]
+    fn full_client_flow() {
+        let conn_data = download_connection_data();
+
+        let start_result = start(
+            conn_data.server_address.last().unwrap().clone(),
+            conn_data.server_id.clone(),
+            "rust_test_client".to_string(),
+        );
+        assert!(start_result.is_ok(), "❌ Error iniciando el cliente");
+
+        let topic = "rust_test_topic2".to_string();
+        let content = "contenido de prueba".to_string();
+
+        let topic_result = remote_new_topic(topic.clone(), "un test topic".to_string());
+        assert!(topic_result.is_ok(), "❌ Error creando tópico");
+
+        sleep(Duration::from_secs(1));
+
+        let reg_result = register_topic(topic.clone(), "".to_string());
+        assert!(reg_result.is_ok(), "❌ Error registrando tópico");
+
+        sleep(Duration::from_secs(1));
+
+        let key_result = validate_content(topic.clone(), content.clone());
+        assert!(key_result.is_ok(), "❌ Error validando contenido");
+        let key = key_result.unwrap();
+
+        sleep(Duration::from_secs(1));
+
+        let voters_result = voters(key.clone(), topic.clone());
+        assert!(voters_result.is_ok(), "❌ Error obteniendo votantes");
+        println!("✅ Votantes: {:?}", voters_result.unwrap());
+
+        let reputations = get_reputations(topic.clone());
+        println!("📊 Reputaciones: {:?}", reputations);
+
+         let content_result = all_content();
+        assert!(content_result.is_ok(), "❌ Error obteniendo contenido");
+        println!("📄 Contenido: {:?}", content_result.unwrap());
+
+    
+        println!("✅ Test de flujo completo finalizado con éxito");
+        std::thread::sleep(std::time::Duration::from_secs(20));
+    }
+}
+

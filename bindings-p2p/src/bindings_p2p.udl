@@ -10,7 +10,7 @@ void dummy_raw_message(string topic, string message);
     [Throws=APIError]
     ConnectionData start(string server_address, string peer_id, string username);
     [Throws=APIError]
-    void add_vote(string topic, string message, Vote vote);
+    void add_vote(string idvotation, string topic, Vote vote);
     [Throws=APIError]
     string validate_content(string topic, string content);
     [Throws=APIError]
