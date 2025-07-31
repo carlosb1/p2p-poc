@@ -4,29 +4,17 @@ version = "0.1.0"
 edition = "2021"
 
 [lib]
-name = "uniffi_bindings_p2p"
-crate-type = ["cdylib", "rlib"] #cdylib for android and rlib for testing
-
-[[bin]]
-# This can be whatever name makes sense for your project, but the rest of this tutorial assumes uniffi-bindgen.
-name = "uniffi-bindgen"
-path = "uniffi-bindgen.rs"
+crate-type = ["cdylib"]
 
 [dependencies]
-uniffi = { version = "0.29.2", features = ["cli"] }
-messages-types = { path = "../messages-types" }
+tokio = { version = "1", features = ["full"] }
+reqwest = { version = "0.12.20", default-features = false, features = ["rustls-tls"] }
 messages-p2p = { path = "../messages-p2p" }
-protocol-p2p = { path = "../protocol-p2p" }
-env_logger = "0.11.8"
-log = "0.4.27"
-android_logger = "0.15.0"
-tokio = { version = "1.45.0", features = ["rt"] }
+log = "0.4"
+env_logger = "0.10"
+serde = { version = "1", features = ["derive"] }
 rand = "0.9.1"
 thiserror = "2.0.12"
-reqwest = { version = "0.12.20", default-features = false, features = ["rustls-tls"] }
-serde = { version = "1.0.219", features = ["derive"] }
-once_cell = "1.21.3"
 sha2 = "0.10.9"
-
-[build-dependencies]
-uniffi = { version = "0.29.2", features = ["build"] }
+pyo3 = { version = "0.25.1", features = ["extension-module"] }
+once_cell = "1.21.3"

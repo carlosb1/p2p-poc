@@ -149,7 +149,7 @@ async fn validation_among_clients_with_local_server() {
     init_logging();
 
     /* topic */
-    let topic_to_register = "topic1".to_string();
+    let topic_to_register = "topic13".to_string();
 
     /* server params*/
 
@@ -280,16 +280,16 @@ async fn validation_among_clients_with_local_server() {
 async fn validation_among_clients_with_remote_server() {
     init_logging();
     let server_address =
-        "/ip4/34.243.226.243/tcp/15000/p2p/12D3KooWAc9GpyrxZnJwFhAEPzfghaHPyT2K2LYfhxV4ANuLNN1a"
+        "/ip4/54.247.33.216/tcp/15000/p2p/12D3KooWEEzsdrC1FZkrApHMHwjCD4ujSYU6SXm3fuYUJBjzKM2w"
             .to_string();
     let peer_id_server =
-        PeerId::from_str("12D3KooWAc9GpyrxZnJwFhAEPzfghaHPyT2K2LYfhxV4ANuLNN1a").unwrap();
+        PeerId::from_str("12D3KooWEEzsdrC1FZkrApHMHwjCD4ujSYU6SXm3fuYUJBjzKM2w").unwrap();
 
     let mut clients = vec![];
     /* client params */
 
     /* topic */
-    let topic_to_register = "topic1".to_string();
+    let topic_to_register = "topic13".to_string();
 
     sleep(Duration::from_secs(10)).await;
     //////////////////////////////

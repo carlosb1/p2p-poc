@@ -13,3 +13,4 @@ venv
 .aws
 aws
 messages-p2p/peer_*
+bindings-p2p/12D3*

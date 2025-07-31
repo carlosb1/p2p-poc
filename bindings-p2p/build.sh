@@ -17,14 +17,6 @@ cp ../target/release/libuniffi_bindings_p2p.so ../py-sdk/src/
 
 # Step 2: Generate Kotlin bindings
 rm -rf ../android-app/app/src/main/java/uniffi
-cargo run --bin uniffi-bindgen generate src/bindings_p2p.udl \
-    --language kotlin \
-    --out-dir ../android-app/app/src/main/java
-
-# step 3: Generate python bindings
-cargo run --bin uniffi-bindgen generate src/bindings_p2p.udl \
-    --language python \
-    --out-dir ../py-sdk/src/
 
 
 # Step 4: Copy the generated files to the correct location
