@@ -350,6 +350,10 @@ dependencies = [
 ]
 
 [[package]]
+name = "backend"
+version = "0.1.0"
+
+[[package]]
 name = "backtrace"
 version = "0.3.75"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -909,6 +913,10 @@ checksum = "e13624c2627564efccf4934284bdd98cbaa14e79b0b5a141218e507b3a823456"
 dependencies = [
  "percent-encoding",
 ]
+
+[[package]]
+name = "frontend"
+version = "0.1.0"
 
 [[package]]
 name = "fs2"
@@ -2248,7 +2256,6 @@ dependencies = [
  "serde_json",
  "tokio",
  "toml",
- "tracing-subscriber",
 ]
 
 [[package]]
