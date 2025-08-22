@@ -1,0 +1,59 @@
+version: "3.8"
+
+services:
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile.backend
+    ports:
+      - "3000:3000"
+    env_file:
+      - ./default.env
+      - ./override.env
+
+  frontend:
+    build:
+      dockerfile: Dockerfile.frontend
+    ports:
+      - "8080:8080"
+    env_file:
+      - ./default.env
+      - ./override.env
+    command: >
+      sh -c '
+      mkdir -p /app/frontend/public &&
+      echo "{\"urlBackend\": \"http://${URL_BACKEND:-backend}:${BACKEND_PORT:-3000}\"}" > /app/frontend/public/config.json &&
+      exec "$@" 
+      ' --
+  pyagents:
+    build:
+      context: ./py-agents
+      dockerfile: ../Dockerfile.pyagents
+    shm_size: "1gb"
+    env_file:
+      - ./default.env
+      - ./override.env
+
+  mongo:
+    image: mongo
+    ports:
+      - "27017:27017"
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: root
+      MONGO_INITDB_ROOT_PASSWORD: example
+
+  meilisearch:
+    image: getmeili/meilisearch:v1.16
+    ports:
+      - "7700:7700"
+    volumes:
+      - ./meili_data:/meili_data
+    command: meilisearch --master-key="MASTER_KEY"
+    restart: unless-stopped
+
+  redis:
+    image: redis:7
+    ports:
+      - "6379:6379"
+
+

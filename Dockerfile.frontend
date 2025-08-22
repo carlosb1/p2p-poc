@@ -1,0 +1,25 @@
+FROM rust:1 AS chef
+RUN cargo install cargo-chef
+WORKDIR /app
+
+FROM chef AS planner
+
+COPY frontend ./frontend
+WORKDIR /app/frontend
+
+RUN cargo chef prepare --recipe-path recipe.json
+
+FROM chef AS builder
+WORKDIR /app/frontend
+COPY --from=planner /app/frontend/recipe.json recipe.json
+RUN cargo chef cook --release --recipe-path recipe.json
+COPY frontend/ ./
+
+# Install `dx`
+RUN curl -L --proto '=https' --tlsv1.2 -sSf https://raw.githubusercontent.com/cargo-bins/cargo-binstall/main/install-from-binstall-release.sh | bash
+RUN cargo binstall dioxus-cli --root /.cargo -y --force
+ENV PATH="/.cargo/bin:$PATH"
+
+# TODO add nginx for production
+# CMD para servir la app desde código fuente (útil en desarrollo)
+CMD ["dx", "serve", "--addr", "0.0.0.0", "--port", "8080"]

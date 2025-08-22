@@ -3,6 +3,7 @@ name = "messages-types"
 version = "0.1.0"
 edition = "2024"
 
+
 [lib]
 name = "messages_types"
 path = "src/lib.rs"

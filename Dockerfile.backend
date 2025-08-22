@@ -1,0 +1,13 @@
+FROM rust:latest
+WORKDIR /app
+
+# Copy all the depencies
+COPY messages-types ./messages-types
+COPY protocol-p2p ./protocol-p2p
+COPY messages-p2p ./messages-p2p
+COPY backend ./backend
+
+WORKDIR /app/backend
+RUN cargo build --release
+
+CMD ["./target/release/backend"]

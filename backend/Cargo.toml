@@ -1,0 +1,26 @@
+[package]
+name = "backend"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+tokio = { version = "1.42.0", features = ["full"] }
+axum = { version = "0.8.1", features = ["ws"]}
+futures-util = "0.3.31"
+tower-http = {version = "0.6.2", features = ["cors"]}
+mongodb = { version = "3.2.3"}
+anyhow = "1.0.98"
+meilisearch-sdk = "0.29.1"
+futures = "0.3" # To be able to block on async functions if you are not using an async runtime
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0.140"
+tower = "0.5.2"
+hyper = "1.6.0"
+dotenv = "0.15.0"
+redis = { version = "0.32.4", features = ["aio", "tokio-comp"] }
+uuid = { version = "1.17.0", features = ["v4"] }
+messages-p2p = { path = "../messages-p2p" }
+
+
+[dev-dependencies]
+http-body-util = "0.1.3"

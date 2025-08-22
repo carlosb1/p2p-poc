@@ -2,4 +2,9 @@
 resolver = "3"
 members = [
     "messages-p2p", "bindings-p2p"
-, "protocol-p2p", "messages-types", "backend", "frontend"]
+, "protocol-p2p", "messages-types"]
+
+exclude = [
+    "backend",
+    "frontend"
+]

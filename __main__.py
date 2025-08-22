@@ -35,32 +35,49 @@ pulumi.info(f'Possible tags = {tags}')
 # Create an IAM policy that allows ECR repository creation
 # Creating storage space to upload a docker image of our app to
 
-url= "886248216134.dkr.ecr.eu-west-1.amazonaws.com/p2p/tracker-server"
+url_relay= "886248216134.dkr.ecr.eu-west-1.amazonaws.com/p2p/tracker-server"
+url_backend = "886248216134.dkr.ecr.eu-west-1.amazonaws.com/p2p/backend"
+url_frontend = "886248216134.dkr.ecr.eu-west-1.amazonaws.com/p2p/frontend"
+url_pyagents = "886248216134.dkr.ecr.eu-west-1.amazonaws.com/p2p/pyagents"
+urls_with_contexts = [
+    (url_relay, ".", "tracker-server", "Dockerfile"),
+    (url_backend, ".", "backend", "Dockerfile.backend"),
+    (url_frontend,".", "frontend", "Dockerfile.frontend"),
+    (url_pyagents, "py-agents/", "pyagents", "Dockerfile.pyagents")]
+
+
 # Fetch the ECR repository details
-app_ecr_repo = aws.ecr.get_repository(name='p2p/tracker-server')
+app_ecr_repo_relay = aws.ecr.get_repository(name='p2p/tracker-server')
+app_ecr_repo_backend = aws.ecr.get_repository(name='p2p/backend')
+app_ecr_repo_frontend = aws.ecr.get_repository(name='p2p/frontend')
+app_ecr_repo_pyagents = aws.ecr.get_repository(name='p2p/pyagents')
 
-# Attaching an application life cycle policy to the storage
-app_lifecycle_policy = aws.ecr.LifecyclePolicy(
-    "app-lifecycle-policy",
-    repository=app_ecr_repo.name,
-    policy="""{
-        "rules": [
-            {
-                "rulePriority": 10,
-                "description": "Remove untagged images",
-                "selection": {
-                    "tagStatus": "untagged",
-                    "countType": "imageCountMoreThan",
-                    "countNumber": 1
-                },
-                "action": {
-                    "type": "expire"
+app_ecr_repos = [("relay-server", app_ecr_repo_relay), ("backend", app_ecr_repo_backend),
+                 ("frontend", app_ecr_repo_frontend),
+                 ("pyagents", app_ecr_repo_pyagents)
+                 ]
+
+def set_up_policy(name, app_ecr_repo):
+    return aws.ecr.LifecyclePolicy(
+        f"app-lifecycle-policy-{name}",
+        repository=app_ecr_repo.name,
+        policy="""{
+            "rules": [
+                {
+                    "rulePriority": 10,
+                    "description": "Remove untagged images",
+                    "selection": {
+                        "tagStatus": "untagged",
+                        "countType": "imageCountMoreThan",
+                        "countNumber": 1
+                    },
+                    "action": {
+                        "type": "expire"
+                    }
                 }
-            }
-        ]
-    }""",
-)
-
+            ]
+        }""",
+    )
 
 
 def get_registry_info(rid):
@@ -76,21 +93,40 @@ def get_registry_info(rid):
     )
 
 
-app_registry = get_registry_info(app_ecr_repo.registry_id)
-
-for tag in tags:
+def new_docker_image(url, tag, context, name, dockerfile):
     url_version = f"{url}:{tag}"
     app_image = docker.Image(
-        f"tracker-server-{tag}",
+        f"{name}-{tag}",
         image_name=url_version,
         build=docker.DockerBuildArgs(
-            context='.',
+            context=context,
             platform='linux/amd64',
+            dockerfile=dockerfile
         ),
         skip_push=False,
         registry=app_registry
     )
-    pulumi.export("app image:", app_image.repo_digest)
+    return app_image
+
+for (name, app_ecr_repo) in app_ecr_repos:
+    print(f"Creating policy for {name}")
+    set_up_policy(name, app_ecr_repo)
+
+
+for (name, app_ecr_repo) in app_ecr_repos:
+    print(f"Creating {app_ecr_repo.registry_id}")
+    app_registry = get_registry_info(app_ecr_repo.registry_id)
+
+
+app_images = []
+for (url, context, name, dockerfile) in urls_with_contexts:
+    for tag in tags:
+        print(f"{url}:{tag} with context={context}")
+        app_image = new_docker_image(url, tag, context, name, dockerfile)
+        app_images.append(app_image.repo_digest)
+
+for app_image in app_images:
+    pulumi.export("app image:", app_image)
 
 
 
