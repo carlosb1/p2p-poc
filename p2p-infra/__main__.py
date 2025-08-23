@@ -280,23 +280,25 @@ meili_sd = make_sd_service("meilisearch")
 redis_sd = make_sd_service("redis")
 frontend_sd = make_sd_service("frontend")
 
+logs_group = "p2p-infra-log-group"
+subnets: list = [app_vpc_subnet.id, app_vpc_subnet_b.id]
+security_groups: list = [sg_all_open.id]
+
 
 # tracker server operation
-cpu="256"
-memory=512
-port_mappings=[{"containerPort": port_tracker_server, "protocol": "tcp"},
-                    {"containerPort": port_p2p_tracker_server,
-                     "protocol": "tcp"}]
-env_vars=[]
-image_name = tracker_server_image_name
-name = "tracker-server"
-logs_group = "p2p-infra-log-group"
-subnets: list  = [app_vpc_subnet.id, app_vpc_subnet_b.id]
-security_groups: list  = [sg_all_open.id]
-depends_on = []
-load_balancers: list[aws.ecs.ServiceLoadBalancerArgs] = []
-
-make_service(name, subnets, security_groups, availability_zone, image_name, cpu, memory, port_mappings, env_vars, logs_group, depends_on, load_balancers)
+refresh_tracker_server = False
+if refresh_tracker_server:
+    cpu="256"
+    memory=512
+    port_mappings=[{"containerPort": port_tracker_server, "protocol": "tcp"},
+                        {"containerPort": port_p2p_tracker_server,
+                         "protocol": "tcp"}]
+    env_vars = []
+    image_name = tracker_server_image_name
+    name = "tracker-server"
+    depends_on = []
+    load_balancers: list[aws.ecs.ServiceLoadBalancerArgs] = []
+    make_service(name, subnets, security_groups, availability_zone, image_name, cpu, memory, port_mappings, env_vars, logs_group, depends_on, load_balancers)
 
 
 name = 'mongo'
@@ -313,7 +315,7 @@ depends_on = []
 load_balancers = []
 
 make_service(name, subnets, security_groups, availability_zone, image_name, cpu, memory,
-             port_mappings, env_vars, logs_group, depends_on, load_balancers, mongo_sd)
+             port_mappings, env_list(mongo_env), logs_group, depends_on, load_balancers, mongo_sd)
 
 
 name = 'meilisearch'
@@ -325,7 +327,7 @@ meilisearch_env=dict()
 depends_on = []
 load_balancers = []
 make_service(name, subnets, security_groups, availability_zone, image_name, cpu, memory
-             , port_mappings, env_vars, logs_group, depends_on, load_balancers, meili_sd)
+             , port_mappings, env_list(meilisearch_env), logs_group, depends_on, load_balancers, meili_sd)
 
 name = "redis"
 image_name = "redis:7"
@@ -335,7 +337,7 @@ port_mappings=[{"containerPort": 6379, "protocol": "tcp"}]
 redis_env=dict()
 load_balancers = []
 make_service(name, subnets, security_groups, availability_zone, image_name, cpu, memory
-             , port_mappings, env_vars, logs_group, depends_on, load_balancers, redis_sd)
+             , port_mappings, env_list(redis_env), logs_group, depends_on, load_balancers, redis_sd)
 
 mongo_url = pulumi.Output.concat("mongodb://root:example@", "mongo.", dns_ns.name, ":27017")
 meili_url = pulumi.Output.concat("http://", "meilisearch.", dns_ns.name, ":7700")

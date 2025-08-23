@@ -38,7 +38,7 @@ nav a:hover, nav button:hover {
 
 main {
     padding: 2rem;
-    max-width: 800px;
+    max-width: 1200px;
     margin: 0 auto;
     background-color: white;
     border-radius: 8px;
@@ -96,12 +96,27 @@ main {
     gap: 1.5rem;
 }
 
+
+
 .card {
     background: white;
     padding: 1rem;
     border-radius: 1rem;
     box-shadow: 0 0 10px rgba(0,0,0,0.1);
 }
+
+.parent-grid-cards {
+    display: grid;
+    grid-template-columns: repeat(12, minmax(0, 1fr));
+    gap: 1rem;
+}
+
+.span-3  { grid-column: span 3; }
+.span-4  { grid-column: span 4; }
+.span-6  { grid-column: span 6; }
+.span-8  { grid-column: span 8; }
+.span-12 { grid-column: 1 / -1; }
+
 
 .card h3 {
     margin-top: 0;
@@ -112,4 +127,78 @@ main {
     margin-top: 0.5rem;
     color: blue;
     text-decoration: underline;
+}
+
+<!-- like buttons -->
+
+.card-footer {
+    display: flex;
+    justify-content: flex-end;
+    gap: 0.5rem;
+    margin-top: 0.75rem;
+}
+
+.btn-action {
+    padding: 0.3rem 0.6rem;
+    font-size: 0.8rem;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-weight: 600;
+    transition: background-color 0.2s ease;
+}
+
+.btn-like {
+    background-color: #27ae60; /* verde */
+    color: white;
+}
+
+.btn-like:hover {
+    background-color: #1e874b;
+}
+
+.btn-dislike {
+    background-color: #e74c3c; /* rojo */
+    color: white;
+}
+
+.btn-dislike:hover {
+    background-color: #c0392b;
+}
+
+<!-- tags info -->
+.tag-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: .5rem;
+    margin-top: .5rem;
+}
+
+.tag {
+    display: inline-flex;
+    align-items: center;
+    padding: .25rem .6rem;
+    border-radius: 999px;
+    font-size: .85rem;
+    font-weight: 600;
+    line-height: 1;
+}
+
+.tag .remove {
+    margin-left: .4rem;
+    opacity: .8;
+    border: none;
+    background: transparent;
+    cursor: pointer;
+    font-size: .9rem;
+}
+
+.tag-input-row {
+    display: flex;
+    gap: .5rem;
+    align-items: center;
+}
+
+.tag-input-row .input {
+    flex: 1;
 }

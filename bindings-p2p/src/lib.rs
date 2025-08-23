@@ -274,7 +274,7 @@ impl ClientWrapper {
     }
 }
 
-const MAGIC_SERVER_LINK_ADDRESS: &str = "http://54.247.33.216:3000/tracker";
+const MAGIC_SERVER_LINK_ADDRESS: &str = "http:///34.244.185.56:3000/tracker";
 
 #[pyfunction]
 pub fn download_connection_data() -> ConnectionData {

@@ -8,15 +8,14 @@ use std::time::Duration;
 use axum::{extract::{ws::{Message, WebSocket}, State, WebSocketUpgrade}, http::HeaderValue, response::IntoResponse, routing::get, Router};
 use axum::routing::post;
 use futures_util::{SinkExt, StreamExt};
-use meilisearch_sdk::reqwest;
 use serde_json::json;
 use tokio::sync::broadcast::{self, Sender};
-use tokio::sync::mpsc;
 use tokio::time::sleep;
 use tower_http::cors::{Any, CorsLayer};
 use services::llmdb::LLMDB;
 use services::db::DB;
 use crate::routes::links::{add_link, delete_link, edit_link, search_links};
+use crate::services::p2p;
 use crate::services::p2p::P2PClient;
 
 // assert checkers
@@ -60,6 +59,8 @@ async fn main() {
     assert_send_sync::<LLMDB>();
     assert_send_sync::<DB>();
     dotenv::dotenv().ok();
+    /*  set up p2p client*/
+
 
     /* db */
     let mongodb_uri = std::env::var("URL_DB").unwrap_or("mongodb://root:example@localhost:27017".to_string());
@@ -118,41 +119,60 @@ async fn chat_handler(State(state): State<AppState>, ws: WebSocketUpgrade) -> im
 async fn handle_websocket(send_to_app: Sender<String>, websocket: WebSocket) {
     let (mut ws_sender,mut ws_receiver) = websocket.split();
 
-    // background tasks to send info the websocket info 
+    // background tasks to send info the websocket info
+    let connection_data = p2p::download_server_params_from_address().await;
+    let server_peer_id = connection_data.server_id.as_str();
+    let ind = connection_data.server_address.len() - 2;
+    let server_address: &str = connection_data.server_address.get(ind).expect("server address not found");
 
-    let server_peer_id: &str = "";
-    let server_address: &str = "";
+    println!("Server peer id: {}", server_peer_id);
+    println!("Server address: {}", server_address);
+
     let client = P2PClient::new(server_peer_id, server_address).expect("Client could not be created");
     client.start().await;
-    tokio::spawn(async move {
-        loop {
-            let items = client.get_runtime_content_to_validate().await;
-            if !items.is_empty() {
-                for (key, topic, content, duration) in items {
-                    println!("new content: {key} | {topic} | {content:?} | {:?}", duration);
-                    let jsoned_message = json!({"key" : key, "topic" : topic, "content": content});
-                    ws_sender.send(Message::from(
-                        serde_json::to_string(&jsoned_message).expect("It could not parse the json message"))).await.expect("It could not send a message");}
+    // If P2PClient methods take &self and are internally Sync:
+    let client = Arc::new(client);
+
+    {
+        let client = client.clone();
+        tokio::spawn(async move {
+            loop {
+                // info for validation
+                let items = client.get_runtime_content_to_validate().await;
+                let my_topics = client.get_my_topics().await;
+                let all_content = client.all_content();
+                let all_status_votes = client.get_status_voteses();
+
+                if !items.is_empty() {
+                    for (key, topic, content, duration) in items {
+                        println!("new content: {key} | {topic} | {content:?} | {:?}", duration);
+
+                        let jsoned_message = json!({"key" : key, "topic" : topic, "content": content});
+                        ws_sender.send(Message::from(
+                            serde_json::to_string(&jsoned_message).expect("It could not parse the json message"))).await.expect("It could not send a message");
+                    }
+                }
+                sleep(Duration::from_secs(1)).await;
             }
-            sleep(Duration::from_secs(1)).await;
-        }
-    });
-   
-     
-
-
-
-
-
-    // logic when we receive messages from websocket
-    let mut rx_from_app = send_to_app.subscribe();
-    tokio::spawn(async move {
-        while let Ok(msg) = rx_from_app.recv().await {
-            println!("<- {:?}", msg);
-            //we want to replay the thread
-            //   ws_sender.send(Message::from(msg)).await.unwrap()
-        }
-    });
+        });
+    }
+    {
+        let client = client.clone();
+        // logic when we receive messages from websocket
+        let mut rx_from_app = send_to_app.subscribe();
+        tokio::spawn(async move {
+            while let Ok(msg) = rx_from_app.recv().await {
+                println!("<- {:?}", msg);
+                //get key for status?
+                //client.get_status_votes(key);
+                //TODO can be blocked
+                let votes = client.get_my_topics().await;
+                println!("votes={:?}", votes);
+                //we want to replay the thread
+                //   ws_sender.send(Message::from(msg)).await.unwrap()
+            }
+        });
+    }
 
 
     // we receive from the websocket then we send to the channel in the app
@@ -161,6 +181,7 @@ async fn handle_websocket(send_to_app: Sender<String>, websocket: WebSocket) {
             match msg {
                 Message::Text(content) => {
                     println!("->{}", content);
+                    //we send to another threead from the websocket for avoiding blockers
                     send_to_app.send(content.to_string()).unwrap();
                 },
                 _ => ()
@@ -174,16 +195,13 @@ mod tests {
     use axum::{
         body::Body,
         http::{Request, StatusCode},
-        Router,
     };
-    use axum::body::to_bytes;
-    use hyper::body;
     use serde_json::json;
     use tower::ServiceExt; // for `app.oneshot()`
     use http_body_util::BodyExt;
 
 
-    use crate::{app, model::Link, routes::links::{add_link, edit_link, delete_link, search_links}, AppState};
+    use crate::{app, model::Link, AppState};
 
 
     #[tokio::test]

@@ -1460,6 +1460,7 @@ dependencies = [
  "dioxus",
  "futures",
  "gloo-net",
+ "log",
  "serde",
  "urlencoding",
 ]

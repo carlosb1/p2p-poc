@@ -20,6 +20,7 @@ dotenv = "0.15.0"
 redis = { version = "0.32.4", features = ["aio", "tokio-comp"] }
 uuid = { version = "1.17.0", features = ["v4"] }
 messages-p2p = { path = "../messages-p2p" }
+reqwest = "0.12.23"
 
 
 [dev-dependencies]
