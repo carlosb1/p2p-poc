@@ -2,9 +2,11 @@ use std::time::Duration;
 use axum::serve::Serve;
 use futures_util::FutureExt;
 use mongodb::event::sdam::ServerClosedEvent;
-use messages_p2p::{DataContent, Keypair, PeerId, Votation, Vote};
+use messages_p2p::{DataContent, Keypair, PeerId, StateContent, Votation, Vote};
 use messages_p2p::p2p::api::APIClient;
 use serde::Deserialize;
+use tokio::task::JoinHandle;
+use crate::model::{Content, ContentToValidate, WSContentData, Topic};
 //use messages_p2p::p2p::api::APIClient;
 
 #[derive(Debug, Deserialize)]
@@ -33,11 +35,9 @@ pub async fn download_server_params_from_address() -> ConnectionData {
 
 }
 
+#[derive(Clone)]
 pub struct P2PClient {
-   // pub client: APIClient,
-    
-    pub counter: u32,
-    pub client: APIClient,
+    client: APIClient,
 }
 
 
@@ -54,7 +54,7 @@ impl P2PClient {
             &server_peer_id,
             &server_address,
         )?;
-        Ok(P2PClient {counter: 0, client})
+        Ok(P2PClient {client})
     }
     
     pub fn new_key_available(&self, topic: &str, content: &str) -> anyhow::Result<String> {
@@ -62,8 +62,8 @@ impl P2PClient {
     }
 
 
-    pub async fn start(&self) { 
-       self.client.start().await.expect("Client could not start");
+    pub async fn start(&self) -> anyhow::Result<(JoinHandle<()>,JoinHandle<()>)> {
+       self.client.start().await
     }
 
     pub async fn new_remote_topic(&self, topic: &str, description: &str) -> anyhow::Result<()> {
@@ -82,8 +82,10 @@ impl P2PClient {
         self.client.register_topic(&topic).await
     }
 
-    pub async fn get_my_topics(&self) -> Vec<(String,String)> {
-        self.client.get_my_topics().await.iter().map(|t| (t.name.clone(), t.description.clone())).collect()
+    pub async fn get_my_topics(&self) -> Vec<Topic> {
+        self.client.get_my_topics().await.iter().map(
+            |t| (Topic {title: t.name.clone(),description: t.description.clone()}
+                )).collect()
     }
 
     pub fn get_reputations(&self, topic: String) -> anyhow::Result<Vec<(String,f32)>> {
@@ -97,14 +99,14 @@ impl P2PClient {
     }
     
 
-    pub async fn get_runtime_content_to_validate(&self)  -> Vec<(String, String, String, Duration)>  {
+    pub async fn get_runtime_content_to_validate(&self)  -> Vec<ContentToValidate>  {
         let elems = self.client.get_runtime_content_to_validate().await;
-        let counter_str = self.counter.to_string();
-        let values = vec![(format!("key{:}",counter_str), 
-              format!("topic{:}",counter_str), 
-              format!("content{:}",counter_str),
-              Duration::from_secs(self.counter as u64))];
-        
+        let values: Vec<ContentToValidate> = elems.iter().map(|e| {
+            {
+                let elem = e.clone();
+                ContentToValidate { id_votation: elem.0, topic: elem.1, content: elem.2, duration: elem.3 }
+            }
+        }).collect();
         values
     }
 
@@ -114,8 +116,12 @@ impl P2PClient {
         res
     }
 
-    pub fn all_content(&self) -> Vec<DataContent> {
-        self.client.all_content()
+    pub fn all_content(&self) -> Vec<Content> {
+        self.client.all_content().iter().map(
+            |dc| Content{
+                id_votation: dc.id_votation.clone(),
+                content: dc.content.clone(),
+                approved: dc.approved == StateContent::Approved } ).collect()
     }
 
     pub async fn voters(&self, key: String, topic: String) -> anyhow::Result<Vec<String>> {

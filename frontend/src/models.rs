@@ -1,13 +1,19 @@
 use std::collections::HashMap;
 use std::time::Duration;
 use serde::{Deserialize, Serialize};
-#[derive(Serialize, Deserialize, Debug)]
-#[derive(Clone)]
+
+#[derive(Serialize)]
+pub struct SearchQuery {
+    query: String,
+}
+
+#[derive(Serialize, Deserialize, Clone)]
 pub struct Link {
     pub url: String,
     pub tags: Vec<String>,
     pub description: Option<String>,
 }
+
 
 #[derive(Serialize, Deserialize, Debug)]
 #[derive(Clone)]
@@ -30,9 +36,9 @@ pub struct Content {
     pub content: String,
     pub approved: bool,
 }
- 
+
 #[derive(Serialize, Deserialize, Debug)]
-#[derive(Clone)]
+#[derive(Clone, PartialEq)]
 pub struct ContentToValidate {
     pub id_votation: String,
     pub topic: String,
@@ -48,7 +54,7 @@ pub struct WSContentData {
     pub content_to_validate: Vec<ContentToValidate>,
     pub voters_by_key: HashMap<String, Votation>,
     pub reputations_by_topic: HashMap<String, Vec<Reputation>>,
-    
+
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]

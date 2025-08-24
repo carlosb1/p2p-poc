@@ -2,6 +2,7 @@
 mod model;
 mod services;
 mod routes;
+mod utils;
 
 use std::sync::Arc;
 use std::time::Duration;
@@ -17,6 +18,7 @@ use services::db::DB;
 use crate::routes::links::{add_link, delete_link, edit_link, search_links};
 use crate::services::p2p;
 use crate::services::p2p::P2PClient;
+use crate::utils::fetch_data;
 
 // assert checkers
 fn assert_send_sync<T: Send + Sync>() {}
@@ -27,6 +29,7 @@ pub struct AppState {
     pub llmdb: Arc<LLMDB>,
     pub queue: Option<Arc<redis::Client>>,
     pub tx: Sender<String>,
+    pub p2p: Option<P2PClient>
 }
 
 impl AppState {
@@ -46,10 +49,13 @@ impl AppState {
 
         //websocket communication
         let (tx, _) = broadcast::channel(100);
-        
+
+
+
+        println!("Running p2p client!!");
         // redis connection
         
-        let state = AppState{db, llmdb, tx, queue: None};
+        let state = AppState{db, llmdb, tx, queue: None, p2p: None};
         state
     }
 }
@@ -80,7 +86,23 @@ async fn main() {
 
     //websocket communication
     let (tx, _) = broadcast::channel(100);
-    let state = AppState{db, llmdb, tx, queue: Some(redis_client)};
+
+    //p2p client
+    let connection_data = p2p::download_server_params_from_address().await;
+    let server_peer_id = connection_data.server_id.as_str();
+    let ind = connection_data.server_address.len() - 2;
+    let server_address: &str = connection_data.server_address.get(ind).expect("server address not found");
+
+    println!("Server peer id: {}", server_peer_id);
+    println!("Server address: {}", server_address);
+
+    //let client = P2PClient::new(server_peer_id, server_address).expect("Client could not be created");
+    //client.start().await.expect("Client could not be started");
+    //let p2p = Some(client);
+    let p2p = None;
+    
+    println!("p2p client started");
+    let state = AppState{db, llmdb, tx, queue: Some(redis_client), p2p};
 
 
     let app = app(state);
@@ -95,13 +117,6 @@ fn app(state: AppState) -> Router {
     let cors_layer = CorsLayer::new().allow_methods(Any)
         .allow_headers(Any)
         .allow_origin(vec![url_address.parse().unwrap(), "http://localhost:8080".parse().unwrap(), "http://127.0.0.1:8080".parse().unwrap()]);
-
-
-    
-    //let (tx, mut rx) = mpsc::channel(32);
-    //let tx2 = tx.clone();
-    
-
     
     Router::new()
         .route("/", get(|| async {"Home"}))
@@ -113,45 +128,43 @@ fn app(state: AppState) -> Router {
 }
 
 async fn chat_handler(State(state): State<AppState>, ws: WebSocketUpgrade) -> impl IntoResponse {
-    ws.on_upgrade(|websocket| handle_websocket(state.tx, websocket))
+    if state.p2p.is_some() {
+        ws.on_upgrade(|websocket| handle_websocket(state.tx, websocket, state.p2p))
+    } else {
+        ws.on_upgrade(|websocket| mock_handle_websocket(websocket))
+    }
 }
 
-async fn handle_websocket(send_to_app: Sender<String>, websocket: WebSocket) {
+async fn mock_handle_websocket( websocket: WebSocket) {
+    let (mut ws_sender,_) = websocket.split();
+    {
+        tokio::spawn(async move {
+            loop {
+                // info for validation
+                let ws_content_data = utils::fake_ws_content_data();
+                let str_content = serde_json::to_string(&ws_content_data).unwrap();
+                ws_sender.send(Message::from(str_content)).await.expect("Failed to send websocket message");
+                sleep(Duration::from_secs(1)).await;
+            }
+        });
+    }
+}
+
+async fn handle_websocket(send_to_app: Sender<String>, websocket: WebSocket, opt_p2p_client: Option<P2PClient>) {
     let (mut ws_sender,mut ws_receiver) = websocket.split();
-
-    // background tasks to send info the websocket info
-    let connection_data = p2p::download_server_params_from_address().await;
-    let server_peer_id = connection_data.server_id.as_str();
-    let ind = connection_data.server_address.len() - 2;
-    let server_address: &str = connection_data.server_address.get(ind).expect("server address not found");
-
-    println!("Server peer id: {}", server_peer_id);
-    println!("Server address: {}", server_address);
-
-    let client = P2PClient::new(server_peer_id, server_address).expect("Client could not be created");
-    client.start().await;
-    // If P2PClient methods take &self and are internally Sync:
+    let Some(client) = opt_p2p_client else {
+        println!("p2p is not initialized");
+        return;
+    };
     let client = Arc::new(client);
-
     {
         let client = client.clone();
         tokio::spawn(async move {
             loop {
                 // info for validation
-                let items = client.get_runtime_content_to_validate().await;
-                let my_topics = client.get_my_topics().await;
-                let all_content = client.all_content();
-                let all_status_votes = client.get_status_voteses();
-
-                if !items.is_empty() {
-                    for (key, topic, content, duration) in items {
-                        println!("new content: {key} | {topic} | {content:?} | {:?}", duration);
-
-                        let jsoned_message = json!({"key" : key, "topic" : topic, "content": content});
-                        ws_sender.send(Message::from(
-                            serde_json::to_string(&jsoned_message).expect("It could not parse the json message"))).await.expect("It could not send a message");
-                    }
-                }
+                let ws_content_data = utils::fetch_data(client.clone()).await;
+                let str_content = serde_json::to_string(&ws_content_data).unwrap();
+                ws_sender.send(Message::from(str_content)).await.expect("Failed to send websocket message");
                 sleep(Duration::from_secs(1)).await;
             }
         });
@@ -163,11 +176,6 @@ async fn handle_websocket(send_to_app: Sender<String>, websocket: WebSocket) {
         tokio::spawn(async move {
             while let Ok(msg) = rx_from_app.recv().await {
                 println!("<- {:?}", msg);
-                //get key for status?
-                //client.get_status_votes(key);
-                //TODO can be blocked
-                let votes = client.get_my_topics().await;
-                println!("votes={:?}", votes);
                 //we want to replay the thread
                 //   ws_sender.send(Message::from(msg)).await.unwrap()
             }
