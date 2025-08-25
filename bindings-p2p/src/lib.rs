@@ -39,6 +39,10 @@ pub fn init_logging() {
 #[pymodule]
 fn bindings_p2p(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_class::<ClientWrapper>()?;
+    m.add_class::<Vote>()?;
+    m.add_class::<RuntimePendingContent>()?;
+    m.add_class::<Votation>()?;
+    m.add_class::<DataContent>()?;
     m.add_function(wrap_pyfunction!(download_connection_data, m)?)?;
     Ok(())
 }
@@ -200,6 +204,15 @@ impl ClientWrapper {
                 })
                 .collect();
             Ok(reps)
+        })
+    }
+
+    pub fn get_my_pending_to_contents_to_validate(&self) -> PyResult<Vec<DataContent>> {
+        let client = self.client.clone();
+        RUNTIME.block_on(async {
+            let locked = client.lock().await;
+            let results = locked.get_my_pending_to_contents_to_validate().await;
+            Ok(results.iter().cloned().map(DataContent::from).collect())
         })
     }
 

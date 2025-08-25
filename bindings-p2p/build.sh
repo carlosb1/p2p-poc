@@ -1,25 +1,2 @@
-cargo clean
-rm -rf ../android-app/app/src/main/jniLibs
-
-cargo build --release
-
-
-rm -rf ../android-app/app/src/main/jniLibs/x86_64/libbindings_p2p.so
-mkdir -p ../android-app/app/src/main/jniLibs/x86_64
-
-# step 1
-cargo ndk -t armeabi-v7a -t arm64-v8a -t x86_64 -o ../android-app/app/src/main/jniLibs build --release
-
-cp ../target/release/libuniffi_bindings_p2p.so ../py-sdk/src/
-
-
-
-
-# Step 2: Generate Kotlin bindings
-rm -rf ../android-app/app/src/main/java/uniffi
-
-
-# Step 4: Copy the generated files to the correct location
-#cp ../android-app/app/src/main/jniLibs/x86_64/libbindings_p2p.so ../android-app/app/src/main/jniLibs/x86_64/libuniffi_bindings_p2p.so
-#cp ../messages-p2p/temp_config.toml .
-#cp ../messages-p2p/temp_config.toml ../android-app/app/src/main/assets/config.toml
+maturin build --release
+cp /home/carlosb/rust-workspace/p2p-poc/target/wheels/bindings_p2p-0.1.0-cp313-cp313-manylinux_2_34_x86_64.whl ../py-agents/

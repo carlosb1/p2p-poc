@@ -3,12 +3,13 @@ mod models;
 use std::collections::HashMap;
 use std::time::Duration;
 use dioxus::prelude::*;
+use dioxus::warnings::AllowFutureExt;
 use futures::{SinkExt, StreamExt};
 use gloo_net::http::Request;
 use gloo_net::websocket::{futures::WebSocket, Message};
 use serde::{Deserialize, Serialize};
 use models::Link;
-use crate::models::{Content, ContentToValidate, Reputation, Topic, Votation};
+use crate::models::{Content, ContentToValidate, Reputation, Topic, Votation, Vote};
 
 fn main() {
     launch(App);
@@ -44,6 +45,98 @@ pub fn colorize(tag: &str) -> (String, String) {
     (format!("hsl({} {}% {}%)", hue, sat, light), fg.into())
 }
 
+async fn post_link(mut feedback: Signal<Option<String>>, url_backend: Signal<String>, payload: &Link) {
+    let http_url_endpoint_backend = format!("http://{}/link", url_backend);
+
+    let response = Request::post(http_url_endpoint_backend.as_str())
+        .header("Content-Type", "application/json")
+        .json(&payload)
+        .unwrap()
+        .send()
+        .await;
+
+    match response {
+        Ok(res) if res.status() == 200 => {
+            feedback.set(Some("✅ Enviado correctamente".to_string()));
+        }
+        Ok(res) => {
+            feedback.set(Some(format!("❌ Error: {}", res.status())));
+        }
+        Err(err) => {
+            feedback.set(Some(format!("❌ Error de red: {} {}", http_url_endpoint_backend, err)));
+        }
+    }
+}
+
+async fn add_vote(mut feedback: Signal<Option<String>>, url_backend:String, payload: Vote) {
+    let http_url_endpoint_backend = format!("http://{}/vote", url_backend);
+
+    let response = Request::post(http_url_endpoint_backend.as_str())
+        .header("Content-Type", "application/json")
+        .json(&payload)
+        .unwrap()
+        .send()
+        .await;
+
+    match response {
+        Ok(res) if res.status() == 200 => {
+            feedback.set(Some("✅ Enviado correctamente".to_string()));
+        }
+        Ok(res) => {
+            feedback.set(Some(format!("❌ Error: {}", res.status())));
+        }
+        Err(err) => {
+            feedback.set(Some(format!("❌ Error de red: {} {}", http_url_endpoint_backend, err)));
+        }
+    }
+}
+
+async fn post_register_topic(mut feedback: Signal<Option<String>>, url_backend: Signal<String>, payload: &str) {
+    let http_url_endpoint_backend = format!("http://{}/topic/register", url_backend);
+
+    let response = Request::post(http_url_endpoint_backend.as_str())
+        .header("Content-Type", "application/json")
+        .json(&payload)
+        .unwrap()
+        .send()
+        .await;
+
+    match response {
+        Ok(res) if res.status() == 200 => {
+            feedback.set(Some("✅ Enviado correctamente".to_string()));
+        }
+        Ok(res) => {
+            feedback.set(Some(format!("❌ Error: {}", res.status())));
+        }
+        Err(err) => {
+            feedback.set(Some(format!("❌ Error de red: {} {}", http_url_endpoint_backend, err)));
+        }
+    }
+}
+
+async fn post_new_remote_topic(mut feedback: Signal<Option<String>>, url_backend: Signal<String>, payload: &str) {
+    let http_url_endpoint_backend = format!("http://{}/topic/new", url_backend);
+
+    let response = Request::post(http_url_endpoint_backend.as_str())
+        .header("Content-Type", "application/json")
+        .json(&payload)
+        .unwrap()
+        .send()
+        .await;
+
+    match response {
+        Ok(res) if res.status() == 200 => {
+            feedback.set(Some("✅ Enviado correctamente".to_string()));
+        }
+        Ok(res) => {
+            feedback.set(Some(format!("❌ Error: {}", res.status())));
+        }
+        Err(err) => {
+            feedback.set(Some(format!("❌ Error de red: {} {}", http_url_endpoint_backend, err)));
+        }
+    }
+}
+
 
 #[component]
 pub fn App() -> Element {
@@ -56,6 +149,9 @@ pub fn App() -> Element {
     // data from ws
     let mut my_topics = use_signal(|| Vec::<Topic>::new());
     let mut content= use_signal(|| Vec::<Content>::new());
+    let mut my_pending_content= use_signal(|| Vec::<Content>::new());
+
+    // list my content that I want to validate
     let mut content_to_validate = use_signal(|| Vec::<ContentToValidate>::new());
     let mut voters_by_key = use_signal(|| HashMap::<String, Votation>::new());
     let mut reputations_by_topic = use_signal(|| HashMap::<String, Vec<Reputation>>::new());
@@ -94,6 +190,7 @@ pub fn App() -> Element {
                                 content_to_validate.set(payload.content_to_validate);
                                 voters_by_key.set(payload.voters_by_key);
                                 reputations_by_topic.set(payload.reputations_by_topic);
+                                my_pending_content.set(payload.my_pending_content)
                             }
                             links.write().push(LinkCardProps {url:"mocked".to_string(), description:str_content}
                             );
@@ -134,12 +231,12 @@ pub fn App() -> Element {
                     },
                     Page::Links => rsx! {
                         document::Stylesheet { href: asset!("/assets/main.css") }
-                        Links {url_backend: url_backend.clone(), my_topics}
+                        Links {url_backend: url_backend.clone(), my_topics, content_to_validate}
                     },
 
                    Page::Validation => rsx! {
                         document::Stylesheet { href: asset!("/assets/main.css") }
-                        Validation {url_backend: url_backend.clone(), content_to_validate}
+                        Validation {url_backend: url_backend.clone(), my_pending_content}
                     },
 
                     Page::Search => rsx! {
@@ -174,7 +271,7 @@ struct SentContent {
 }
 
 #[component]
-fn Links(url_backend: Signal<String>, my_topics:  Signal<Vec<Topic>>) -> Element{
+fn Links(url_backend: Signal<String>, my_topics:  Signal<Vec<Topic>>, content_to_validate: Signal<Vec<ContentToValidate>>) -> Element{
     let mut url = use_signal(|| "".to_string());
     let mut description = use_signal(|| "".to_string());
     let mut feedback = use_signal(|| None::<String>);
@@ -244,9 +341,22 @@ fn Links(url_backend: Signal<String>, my_topics:  Signal<Vec<Topic>>) -> Element
             add_topic(topic_input());
     };
 
-    let on_add_click_register_topic = move |_| {
-        add_topic(topic_input());
+    let on_add_click_register_topic =  move |_| {
+        spawn(async move {
+            if let Some(topic) = topics.read().first() {
+                post_register_topic(feedback,url_backend,topic).await;
+            }
+        });
     };
+
+    let on_add_click_new_remote_topic =  move |_| {
+        spawn(async move {
+            if let Some(topic) = topics.read().first() {
+                post_new_remote_topic(feedback,url_backend,topic).await;
+            }
+        });
+    };
+
 
     let tags_for_link: Vec<(String, String, String)> = tags.read().iter().cloned().map(|t| {
         let (bg, fg) = colorize(&t);
@@ -294,27 +404,7 @@ fn Links(url_backend: Signal<String>, my_topics:  Signal<Vec<Topic>>) -> Element
                 tags: tags_for_payload,
             };
 
-
-            let http_url_endpoint_backend = format!("http://{}/link",url_backend);
-
-            let response = Request::post(http_url_endpoint_backend.as_str())
-                .header("Content-Type", "application/json")
-                .json(&payload)
-                .unwrap()
-                .send()
-                .await;
-
-            match response {
-                Ok(res) if res.status() == 200 => {
-                    feedback.set(Some("✅ Enviado correctamente".to_string()));
-                }
-                Ok(res) => {
-                    feedback.set(Some(format!("❌ Error: {}", res.status())));
-                }
-                Err(err) => {
-                    feedback.set(Some(format!("❌ Error de red: {} {}", http_url_endpoint_backend, err)));
-                }
-            }
+            post_link(feedback, url_backend, &payload).await;
         });
     };
 
@@ -394,6 +484,7 @@ fn Links(url_backend: Signal<String>, my_topics:  Signal<Vec<Topic>>) -> Element
                 }
                 button { class: "button", onclick: on_add_click_topic, "Añadir" }
                 button { class: "button", onclick: on_add_click_register_topic, "Registrar topics" }
+                button { class: "button", onclick: on_add_click_new_remote_topic, "Añadir topics" }
             }
 
             div { class: "tag-list",
@@ -406,11 +497,50 @@ fn Links(url_backend: Signal<String>, my_topics:  Signal<Vec<Topic>>) -> Element
                     }
                 }
             }
+            h3 {"Contenido pendiente de validar"}
+            div {
+            class: "link-list",
+            for cont_val in content_to_validate.read().clone().iter() {
+                    div {
+                        class: "link-card",
+                        p { "{cont_val.id_votation}"}
+                        p { class: "link-desc", "{cont_val.content}" }
+                        div {
+                            class: "tag-list",
+                            span { class: "tag", "#{cont_val.topic}" }
+
+                        }
+                    }
+                }
+            }
         }
     }
 }
 
 
+
+async fn post_vote(mut feedback: Signal<Option<String>>, url_backend: Signal<String>, payload: &Vote) {
+    let http_url_endpoint_backend = format!("http://{}/vote", url_backend);
+
+    let response = Request::post(http_url_endpoint_backend.as_str())
+        .header("Content-Type", "application/json")
+        .json(&payload)
+        .unwrap()
+        .send()
+        .await;
+
+    match response {
+        Ok(res) if res.status() == 200 => {
+            feedback.set(Some("✅ Enviado correctamente".to_string()));
+        }
+        Ok(res) => {
+            feedback.set(Some(format!("❌ Error: {}", res.status())));
+        }
+        Err(err) => {
+            feedback.set(Some(format!("❌ Error de red: {} {}", http_url_endpoint_backend, err)));
+        }
+    }
+}
 
 #[component]
 fn Search(url_backend: Signal<String>) -> Element {
@@ -507,34 +637,109 @@ struct LinkCardProps {
 
 #[component]
 fn Validation(url_backend: Signal<String>,
-              content_to_validate: Signal<Vec<ContentToValidate>>) -> Element {
+              my_pending_content: Signal<Vec<Content>>) -> Element {
+
+    let mut feedback = use_signal(|| None::<String>);
+    let mut topic = use_signal(|| "".to_string());
+
+    async fn on_like_vote(id_votation: String, topic: String, feedback: Signal<Option<String>>,  url_backend: String) {
+        log::info!("👍 like");
+        let vote = Vote {
+            id: id_votation,
+            topic,
+            vote: true,
+        };
+        add_vote(feedback, url_backend, vote).await;
+    }
+
+    async fn on_dislike_vote(id_votation: String, topic: String, feedback: Signal<Option<String>>,  url_backend: String) {
+        let vote = Vote {
+            id: id_votation,
+            topic,
+            vote: true,
+        };
+        add_vote(feedback, url_backend, vote).await;
+        log::info!("👎 no");
+    }
+
     rsx! {
         h1 {"Para revisar"}
-        for (i, card) in content_to_validate.iter().enumerate() {
+
+        div {
+            class: "tag-input-row",
+            input {
+                r#type: "text",
+                placeholder: "Escribe un topic",
+                value: "{topic}",
+                oninput: move |evt| topic.set(evt.value().to_string()),
+            }
+        }
+
+        if let Some(msg) = feedback() {
+                p { "{msg}" }
+        }
+
+        for (i, card) in my_pending_content.iter().enumerate() {
             div {
                 class: "card",
                 h3 { "{i}"}
                 p { "{card.id_votation}"}
-                p { "{card.topic}"}
                 p { "{card.content}"}
-//                p { "{card.duration}"}
-                /*
-                a {
-                    href: "{card.url}",
-                    target: "_blank",
-                    "Ir al sitio"
+            div { class: "card-footer",
+                // like
+            button {
+                class: "btn-action btn-like",
+                onclick: {
+                    let id = card.id_votation.clone();
+                    let fb = feedback.clone();
+                    let topic_sig = topic.clone();
+                    move |_| {
+                        // read topic to an owned String now
+                        let topic_val = topic_sig.read().clone();
+                        let url = url_backend.read().clone();
+
+                        // build an OWNED vote and move it into the task
+                        let vote = Vote {
+                            id: id.clone(),
+                            topic: topic_val,
+                            vote: true,
+                        };
+
+                        spawn(async move {
+                            add_vote(fb, url, vote).await; // pass owned vote
+                        });
+                    }
+                },
+                "👍 Sí"
                 }
-                 */
-                div { class: "card-footer",
-                    button { class: "btn-action btn-like", onclick: move |_| {
-                        // acción de "me gusta"
-                        log::info!("👍 like");
-                    }, "👍 Sí" }
-                    button { class: "btn-action btn-dislike", onclick: move |_| {
-                        // acción de "no me gusta"
-                        log::info!("👎 no");
-                    }, "👎 No" }
-               }
+
+                // dislike
+                button {
+                    class: "btn-action btn-dislike",
+                onclick: {
+                    let id = card.id_votation.clone();
+                    let fb = feedback.clone();
+                    let topic_sig = topic.clone();
+
+                    move |_| {
+                        // read topic to an owned String now
+                        let topic_val = topic_sig.read().clone();
+                        let url = url_backend.read().clone();
+                        // build an OWNED vote and move it into the task
+                        let vote = Vote {
+                            id: id.clone(),
+                            topic: topic_val,
+                            vote: true,
+                        };
+
+                        spawn(async move {
+                            add_vote(fb, url, vote).await; // pass owned vote
+                        });
+                    }
+                },
+                "👎 No"
+                }
+            }
             }
         }
     }

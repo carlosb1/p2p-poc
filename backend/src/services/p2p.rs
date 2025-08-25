@@ -124,13 +124,19 @@ impl P2PClient {
                 approved: dc.approved == StateContent::Approved } ).collect()
     }
 
-    pub async fn voters(&self, key: String, topic: String) -> anyhow::Result<Vec<String>> {
-        let values = self.client.voters(&key, &topic).await;
-        Ok(vec![])
+    pub async fn get_my_pending_content(&self) -> Vec<Content> {
+        self.client.get_my_pending_to_contents_to_validate().await.iter().map(
+            |dc| Content{
+                id_votation: dc.id_votation.clone(),
+                content: dc.content.clone(),
+                approved: dc.approved == StateContent::Approved } ).collect()
     }
-    pub async fn validate_content(&self, key: String, topic: String, content: String) -> anyhow::Result<String> {
-        let res = self.client.validate_content(&key, &topic, &content).await;
-        Ok("".to_string())
+
+    pub async fn voters(&self, key: String, topic: String) -> anyhow::Result<Vec<String>> {
+        self.client.voters(&key, &topic).await
+    }
+    pub async fn validate_content(&self, key: String, topic: String, content: String) -> anyhow::Result<()> {
+        self.client.validate_content(&key, &topic, &content).await
     }
     pub fn get_status_votes(&self, key: String) -> Option<Votation> {
         self.client.get_status_vote(key.as_str())
@@ -154,7 +160,7 @@ mod tests {
         let server_address = connection_data.server_address.clone().get(index).unwrap().clone();
         println!("server_address={:?}", server_address);
         let p2p_client = P2PClient::new(server_id.as_str(), server_address.as_str()).unwrap();
-        p2p_client.start().await;
+        p2p_client.start().await.unwrap();
 
         time::sleep(Duration::from_secs(5)).await;
         

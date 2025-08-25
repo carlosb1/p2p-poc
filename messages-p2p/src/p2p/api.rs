@@ -191,6 +191,21 @@ impl APIClient {
     pub async fn get_runtime_content_to_validate(&self) -> Vec<(String, String, String, Duration)> {
         self.validator_client.get_content_to_evaluate().await
     }
+    /* db */
+    pub async fn my_pending_content_to_validate(
+        &self,
+        data_content: &DataContent,
+    ) -> anyhow::Result<()> {
+        self.validator_client
+            .my_pending_content_to_validate(data_content)
+            .await
+    }
+
+    pub async fn get_my_pending_to_contents_to_validate(&self) -> Vec<DataContent> {
+        self.validator_client
+            .get_my_pending_to_contents_to_validate()
+            .await
+    }
 
     pub async fn spawn_node(&self) -> tokio::task::JoinHandle<()> {
         let node_runner = self.node.clone();

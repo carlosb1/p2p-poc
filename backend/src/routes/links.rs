@@ -5,7 +5,7 @@ use axum::{
 };
 use serde::Deserialize;
 use crate::{AppState};
-use crate::model::Link;
+use crate::model::{Link, Vote};
 use crate::services::llmdb::LLMDBLink;
 use crate::services::queue;
 use crate::services::queue::Task;
@@ -69,6 +69,38 @@ pub async fn delete_link(
     let _ = state.llmdb.delete_link(&id).await.map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
     Ok(Json(()))
 }
+
+pub async fn vote_link(
+    State(state): State<AppState>,
+    Json(vote): Json<Vote>,
+) -> Result<Json<()>, StatusCode>{
+    if let Some(p2p) = state.p2p {
+        p2p.add_vote(vote.id, vote.topic, vote.vote).await.map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
+    }
+    Ok(Json(()))
+}
+
+pub async fn register_topic(
+    State(state): State<AppState>,
+    Json(topic): Json<String>,
+) -> Result<Json<()>, StatusCode>{
+    if let Some(p2p) = state.p2p {
+        p2p.register_topic(topic.as_str(), topic.as_str()).await.map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
+    }
+    Ok(Json(()))
+}
+pub async fn new_remote_topic(
+    State(state): State<AppState>,
+    Json(topic): Json<String>,
+) -> Result<Json<()>, StatusCode>{
+    if let Some(p2p) = state.p2p {
+        p2p.new_remote_topic(topic.as_str(), topic.as_str()).await.map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
+    }
+    Ok(Json(()))
+}
+
+
+
 
 pub async fn search_links(
     State(state): State<AppState>,

@@ -52,6 +52,7 @@ pub struct WSContentData {
     pub my_topics: Vec<Topic>,
     pub content: Vec<Content>,
     pub content_to_validate: Vec<ContentToValidate>,
+    pub my_pending_content: Vec<Content>,
     pub voters_by_key: HashMap<String, Votation>,
     pub reputations_by_topic: HashMap<String, Vec<Reputation>>,
 
@@ -66,5 +67,13 @@ pub struct Votation {
     pub leader_id: String,
     pub my_role: String,
     pub votes_id: Vec<(String, Option<f32>)>,
+}
+
+#[derive(Serialize, Deserialize, Debug)]
+#[derive(Clone)]
+pub struct Vote {
+    pub id: String,
+    pub topic: String,
+    pub vote: bool,
 }
 

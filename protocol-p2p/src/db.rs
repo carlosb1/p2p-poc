@@ -1,4 +1,4 @@
-use crate::models::db::{StateContent, Topic, Votation, VoteStatus};
+use crate::models::db::{DataContent, StateContent, Topic, Votation, VoteStatus};
 use crate::models::messages::Vote;
 use crate::{db, models};
 use chrono::Utc;
@@ -7,6 +7,7 @@ use serde_json;
 use sled;
 use sled::{CompareAndSwapError, Db};
 use std::hash::{DefaultHasher, Hash, Hasher};
+use std::sync::Arc;
 
 pub fn create_key_for_voting_db(
     content_id: &str,
@@ -216,7 +217,30 @@ pub fn get_contents(db: &Db) -> Vec<models::db::DataContent> {
         .collect()
 }
 
+/* Save my pending content to validate, if I am proposed */
+pub fn my_pending_content_to_validate(db: &Db, data_content: &DataContent) -> anyhow::Result<()> {
+    let id_votation = data_content.id_votation.clone();
+    let key = format!("my_pending_content_to_validate/{id_votation}");
+    let value = serde_json::to_vec(data_content).expect("Failed to serialize reputation");
+    db.insert(key, value)?;
+    db.flush()?;
+    Ok(())
+}
+
+pub fn get_my_pending_to_contents_to_validate(db: &Db) -> Vec<models::db::DataContent> {
+    db.scan_prefix("my_pending_content_to_validate/")
+        .filter_map(|item| {
+            if let Ok((_key, value)) = item {
+                serde_json::from_slice::<models::db::DataContent>(&value).ok()
+            } else {
+                None
+            }
+        })
+        .collect()
+}
+
 /* votes db operations */
+
 pub fn get_votes(db: &Db, id_votation: &str) -> Vec<(String, Vote)> {
     let key = format!("election/vote/{id_votation}");
     db.scan_prefix(key)
@@ -276,6 +300,19 @@ pub fn get_status_vote(db: &sled::Db, id_votation: &str) -> Option<Votation> {
         .and_then(|value| { serde_json::from_slice::<Votation>(&value).ok() }.or(None))
 }
 
+pub fn get_status_voteses(db: &sled::Db) -> Vec<Votation> {
+    let key = format!("pending_content/");
+    db.scan_prefix(key)
+        .filter_map(|item| {
+            if let Ok((_key, value)) = item {
+                serde_json::from_slice::<Votation>(&value).ok()
+            } else {
+                None
+            }
+        })
+        .collect()
+}
+
 pub fn compare_and_swap_status_vote(
     db: &sled::Db,
     id_votation: &str,
@@ -295,19 +332,6 @@ pub fn compare_and_swap_status_vote(
             current
         )),
     }
-}
-
-pub fn get_status_voteses(db: &sled::Db) -> Vec<Votation> {
-    let key = format!("pending_content/");
-    db.scan_prefix(key)
-        .filter_map(|item| {
-            if let Ok((_key, value)) = item {
-                serde_json::from_slice::<Votation>(&value).ok()
-            } else {
-                None
-            }
-        })
-        .collect()
 }
 
 #[test]

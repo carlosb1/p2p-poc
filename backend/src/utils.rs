@@ -47,7 +47,14 @@ pub async fn fetch_data(client: Arc<P2PClient>) -> WSContentData {
         OP_TIMEOUT, RETRIES, BACKOFF,
         || async { Ok::<_, ()>(client.get_my_topics().await) }
     ).await.unwrap_or_else(Vec::new);
-    
+
+
+    let my_pending_content = with_timeout_retries(
+        OP_TIMEOUT, RETRIES, BACKOFF,
+        || async { Ok::<_, ()>(client.get_my_pending_content().await) }
+    ).await.unwrap_or_else(Vec::new);
+
+
     // 2) Local/in-memory calls (assumed non-blocking)
     let content = client.all_content();
 
@@ -85,6 +92,7 @@ pub async fn fetch_data(client: Arc<P2PClient>) -> WSContentData {
         my_topics,
         content,
         content_to_validate,
+        my_pending_content,
         voters_by_key,
         reputations_by_topic,
     }
@@ -118,6 +126,14 @@ pub fn fake_ws_content_data() -> WSContentData {
         },
     ];
 
+    let my_pending_content = vec![
+        Content {
+            id_votation: "content-2".into(),
+            content: "hello worl2".into(),
+            approved: false,
+        },
+    ];
+
     let mut reputations_by_topic = HashMap::new();
     reputations_by_topic.insert(
         "topic-1".into(),
@@ -145,6 +161,7 @@ pub fn fake_ws_content_data() -> WSContentData {
         my_topics,
         content,
         content_to_validate,
+        my_pending_content,
         voters_by_key,
         reputations_by_topic,
     }

@@ -280,10 +280,10 @@ async fn validation_among_clients_with_local_server() {
 async fn validation_among_clients_with_remote_server() {
     init_logging();
     let server_address =
-        "/ip4/54.247.33.216/tcp/15000/p2p/12D3KooWEEzsdrC1FZkrApHMHwjCD4ujSYU6SXm3fuYUJBjzKM2w"
+        "/ip4/34.244.185.56/tcp/15000/p2p/12D3KooWRCFGzavggUKszQvtUPBMnW887aE4YhYM8eYZej9DcxVM"
             .to_string();
     let peer_id_server =
-        PeerId::from_str("12D3KooWEEzsdrC1FZkrApHMHwjCD4ujSYU6SXm3fuYUJBjzKM2w").unwrap();
+        PeerId::from_str("12D3KooWRCFGzavggUKszQvtUPBMnW887aE4YhYM8eYZej9DcxVM").unwrap();
 
     let mut clients = vec![];
     /* client params */
@@ -361,6 +361,10 @@ async fn validation_among_clients_with_remote_server() {
     println!("All clients initialized, starting voting process...");
 
     for client in clients.clone() {
+        let pending_content = client.get_my_pending_to_contents_to_validate().await;
+        for con in pending_content {
+            println!("pending content: {:?}", con);
+        }
         println!(
             "-> Client {} {} is voting for key: {:?} and topic: {:?}",
             client.peer_id,

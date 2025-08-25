@@ -1,3 +1,4 @@
+use crate::models::db::DataContent;
 use crate::models::messages::{ContentMessage, Vote};
 use crate::{
     db, models, MessageHandler, DEFAULT_REPUTATION,
@@ -47,6 +48,8 @@ impl MessageHandler for ValidatorHandler {
                             id_votation: id_votation.clone(),
                         })
                         .unwrap();
+                    let data_content = DataContent::new(id_votation, content, false);
+                    db::my_pending_content_to_validate(&db, &data_content).ok()?;
                     return Some(str_response.into_bytes());
                 }
                 ContentMessage::InterestedResponse { id_votation } => {

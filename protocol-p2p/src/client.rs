@@ -181,6 +181,19 @@ impl ValidatorClient {
         content_to_evaluate.clone()
     }
 
+    /* operations to check my pending content to evaluate */
+
+    pub async fn my_pending_content_to_validate(
+        &self,
+        data_content: &DataContent,
+    ) -> anyhow::Result<()> {
+        db::my_pending_content_to_validate(&self.db, data_content)
+    }
+
+    pub async fn get_my_pending_to_contents_to_validate(&self) -> Vec<DataContent> {
+        db::get_my_pending_to_contents_to_validate(&self.db)
+    }
+
     pub async fn wait_for_validators(&self) -> anyhow::Result<()> {
         let check_interval = Duration::from_millis(500);
         let start = tokio::time::Instant::now();

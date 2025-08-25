@@ -11,6 +11,14 @@ pub struct Link {
 
 #[derive(Serialize, Deserialize, Debug)]
 #[derive(Clone)]
+pub struct Vote {
+    pub id: String,
+    pub topic: String,
+    pub vote: bool,
+}
+
+#[derive(Serialize, Deserialize, Debug)]
+#[derive(Clone)]
 pub struct Topic {
     pub title: String,
     pub description: String,
@@ -46,6 +54,7 @@ pub struct WSContentData {
     pub my_topics: Vec<Topic>,
     pub content: Vec<Content>,
     pub content_to_validate: Vec<ContentToValidate>,
+    pub my_pending_content: Vec<Content>,
     pub voters_by_key: HashMap<String, Votation>,
     pub reputations_by_topic: HashMap<String, Vec<Reputation>>,
     

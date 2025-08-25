@@ -1,4 +1,6 @@
 use pyo3::pyclass;
+use pyo3::pymethods;
+use pyo3::PyResult;
 use std::time::{SystemTime, UNIX_EPOCH};
 
 #[derive(Debug, thiserror::Error)]
@@ -20,6 +22,22 @@ pub struct RuntimePendingContent {
     pub(crate) content: String,
     #[pyo3(get, set)]
     pub(crate) wait_timeout: SystemTime,
+}
+
+#[pymethods]
+impl RuntimePendingContent {
+    fn __repr__(&self) -> PyResult<String> {
+        // Convert SystemTime -> seconds since epoch
+        let ts = self.wait_timeout
+            .duration_since(UNIX_EPOCH)
+            .map(|d| d.as_secs())
+            .unwrap_or(0);
+
+        Ok(format!(
+            "RuntimePendingContent(key='{}', topic='{}', content='{}', wait_timeout={})",
+            self.key, self.topic, self.content, ts
+        ))
+    }
 }
 
 #[pyclass]
@@ -57,6 +75,16 @@ pub struct Vote {
     pub good: bool,
 }
 
+#[pymethods]
+impl Vote {
+    #[new]
+    fn new(good: bool) -> Self { Self { good } }
+
+    fn __repr__(&self) -> String {
+        format!("Vote(good={})", self.good)
+    }
+}
+
 #[pyclass]
 #[derive(Debug, Clone)]
 pub struct VoteId {
@@ -83,6 +111,27 @@ pub struct Votation {
     pub my_role: String,
     #[pyo3(get, set)]
     pub votes_id: Vec<VoteId>,
+}
+
+#[pymethods]
+impl Votation {
+    fn __repr__(&self) -> PyResult<String> {
+        let ts = self.timestam
+            .duration_since(UNIX_EPOCH)
+            .map(|d| d.as_secs())
+            .unwrap_or(0);
+
+        Ok(format!(
+            "Votation(id_votation='{}', timestam={}, content='{}', status='{}', leader_id='{}', my_role='{}', votes_id={:?})",
+            self.id_votation,
+            ts,
+            self.content,
+            self.status,
+            self.leader_id,
+            self.my_role,
+            self.votes_id,
+        ))
+    }
 }
 
 impl From<messages_p2p::Votation> for Votation {
@@ -150,6 +199,18 @@ pub struct DataContent {
     #[pyo3(get, set)]
     pub approved: StateContent,
 }
+#[pymethods]
+impl DataContent {
+    fn __repr__(&self) -> PyResult<String> {
+        Ok(format!(
+            "DataContent(id_votation='{}', content='{}', approved={:?})",
+            self.id_votation, self.content, self.approved
+        ))
+    }
+}
+
+
+
 
 #[pyclass]
 #[derive(Debug, Clone)]

@@ -15,7 +15,7 @@ use tokio::time::sleep;
 use tower_http::cors::{Any, CorsLayer};
 use services::llmdb::LLMDB;
 use services::db::DB;
-use crate::routes::links::{add_link, delete_link, edit_link, search_links};
+use crate::routes::links::{add_link, delete_link, edit_link, new_remote_topic, register_topic, search_links, vote_link};
 use crate::services::p2p;
 use crate::services::p2p::P2PClient;
 use crate::utils::fetch_data;
@@ -121,13 +121,16 @@ fn app(state: AppState) -> Router {
     Router::new()
         .route("/", get(|| async {"Home"}))
         .route("/link", post(add_link).put(edit_link).delete(delete_link))
+        .route("/vote", post(vote_link))
+        .route("/topic/register", post(register_topic))
+        .route("/topic/new", post(new_remote_topic))
         .route("/search", get(search_links))
-        .route("/ws", get(chat_handler))
+        .route("/ws", get(ws_handler))
         .with_state(state)
         .layer(cors_layer)
 }
 
-async fn chat_handler(State(state): State<AppState>, ws: WebSocketUpgrade) -> impl IntoResponse {
+async fn ws_handler(State(state): State<AppState>, ws: WebSocketUpgrade) -> impl IntoResponse {
     if state.p2p.is_some() {
         ws.on_upgrade(|websocket| handle_websocket(state.tx, websocket, state.p2p))
     } else {

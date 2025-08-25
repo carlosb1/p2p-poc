@@ -46,7 +46,7 @@ pub fn load_config(path: Option<String>) -> anyhow::Result<Config> {
 
 pub fn print_config(peer_id: &PeerId, address: Option<&Multiaddr>, keys: Option<Keypair>) {
     println!("#########################################################");
-    println!("PeerId: {peer_id:?}");
+    println!("Server IP / Peer ID: {peer_id:?}");
     if let Some(address) = address {
         println!("Address: {address:?}");
     }
